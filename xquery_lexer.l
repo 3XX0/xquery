@@ -25,7 +25,8 @@ DELIMITER       [\(\)\[\],\/]
 BLANK           [:blank:]+
 ENDL            \n
 EQUALITY        =|eq|==|is
-LOGIC_OP        or|and|not
+LOGIC_JUNCTION  or|and
+LOGIC_NEGATION  not
 DOC_KEYWORD     doc\({FILENAME}\)
 TEXT_KEYWORD    text\(\)
 PATH_SEPARATOR  \/\/?
@@ -54,20 +55,30 @@ CSTRING         \"[^\"]*\"
                         yylval_->sval = STOKEN(yytext+4, yyleng-5);
                         return token::DOC;
                     }
-{TAGNAME}           {
-                        yylval_->sval = STOKEN(yytext);
-                        return token::TAG;
-                    }
 {PATH_SEPARATOR}    {
                         yylval_->sval = STOKEN(yytext);
                         return token::PATH_SEP;
                     }
-
 {PATH_GLOBBING}     {
                         yylval_->sval = STOKEN(yytext);
                         return token::PATH_GLOB;
                     }
-
+{EQUALITY}          {
+                        yylval_->sval = STOKEN(yytext);
+                        return token::EQUAL;
+                    }
+{LOGIC_JUNCTION}    {
+                        yylval_->sval = STOKEN(yytext);
+                        return token::LOGIC_JUNC;
+                    }
+{LOGIC_NEGATION}    {
+                        yylval_->sval = STOKEN(yytext);
+                        return token::LOGIC_NEG;
+                    }
+{TAGNAME}           {
+                        yylval_->sval = STOKEN(yytext);
+                        return token::TAG;
+                    }
 {TEXT_KEYWORD}          return token::TEXT;
 
                         /* Convert delimiters in tokens */

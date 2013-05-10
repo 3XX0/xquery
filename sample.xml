@@ -1,1 +1,1 @@
-doc(toto.pdf)//*/../hello/text()
+doc(file.pdf)//*/../hello/world/text(),(foo/bar[not(a==b[c and d])])

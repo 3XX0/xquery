@@ -11,24 +11,28 @@ namespace xquery { namespace lang
 enum NTLabel // Non terminal labels
 {
     AP, // Absolute path
-    RP  // Relative path
+    RP, // Relative path
+    F   // Filter
 };
+
+typedef std::vector<const Node*> Edges;
 
 class NonTerminalNode : public Node
 {
     public:
-        NonTerminalNode(NTLabel label, std::vector<const Node*>&& edges)
-          : Node(std::forward<std::vector<const Node*>>(edges)),
+        NonTerminalNode(NTLabel label, Edges&& edges)
+          : Node(std::forward<Edges>(edges)),
             label_(label)
         {
-            set_label("NonTerminalNode `" + kMap_.at(label) + "'");
+            set_label("NonTerminalNode `" + kMap_.at(label) + "'"); 
         }
         ~NonTerminalNode() = default;
 
     private:
         const std::unordered_map<NTLabel, std::string, std::hash<int>> kMap_= {
             {AP, "AP"},
-            {RP, "RP"}
+            {RP, "RP"},
+            {F, "F"}
         };
         NTLabel label_;
 };
@@ -78,10 +82,12 @@ class PathSeparator : public Node
     };
 
     public:
-        PathSeparator(const std::string& token)
+        PathSeparator(const std::string& token, Edges&& edges)
+          : Node(std::forward<Edges>(edges))
         {
             sep_ = kMap_.at(token);
             set_label("PathSeparator `" + token + "'");
+            assert(edges_.size() == 2);
         }
         ~PathSeparator() = default;
 
@@ -117,6 +123,93 @@ class PathGlobbing : public Node
             {"..", PARENT}
         };
         GlobType glob_;
+};
+
+class Precedence : public Node
+{
+    public:
+        Precedence(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("Precedence");
+            assert(edges_.size() == 1);
+        }
+        ~Precedence() = default;
+};
+
+class Concatenation : public Node
+{
+    public:
+        Concatenation(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("Concatenation");
+            assert(edges_.size() == 2);
+        }
+        ~Concatenation() = default;
+};
+
+class Filter : public Node
+{
+    public:
+        Filter(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("Filter");
+            assert(edges_.size() == 2);
+        }
+        ~Filter() = default;
+};
+
+class Equality : public Node
+{
+    enum EqType
+    {
+        REF,
+        VALUE
+    };
+
+    public:
+        Equality(const std::string& token, Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            eq_ = kMap_.at(token);
+            set_label("Equality `" + token + "'");
+            assert(edges_.size() == 2);
+        }
+        ~Equality() = default;
+
+    private:
+        const std::unordered_map<std::string, EqType> kMap_= {
+            {"=", VALUE},
+            {"eq", VALUE},
+            {"==", REF},
+            {"is", REF}
+        };
+        EqType eq_;
+};
+
+class LogicOperator : public Node
+{
+    enum OpType
+    {
+        AND,
+        OR,
+        NOT
+    };
+
+    public:
+        LogicOperator(const std::string& token, Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            op_ = kMap_.at(token);
+            set_label("LogicOperator `" + token + "'");
+            assert(edges_.size() == 1 || edges_.size() == 2);
+        }
+        ~LogicOperator() = default;
+
+    private:
+        const std::unordered_map<std::string, OpType> kMap_= {
+            {"and", AND},
+            {"or", OR},
+            {"not", NOT}
+        };
+        OpType op_;
 };
 
 }}

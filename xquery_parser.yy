@@ -58,12 +58,17 @@
 %token <sval> TAG           "tagname"
 %token <sval> PATH_SEP      "path separator"
 %token <sval> PATH_GLOB     "path globbing"
+%token <sval> EQUAL         "equality test"
+%token <sval> LOGIC_JUNC    "logic junction"
+%token <sval> LOGIC_NEG     "logic negation"
 %token        TEXT          "text()"
 
-%destructor { delete $$; } DOC TAG PATH_SEP PATH_GLOB
+%destructor { delete $$; } DOC TAG PATH_SEP PATH_GLOB EQUAL LOGIC_JUNC LOGIC_NEG
 
+%type <node> query
 %type <node> rp
 %type <node> ap
+%type <node> f
 
 /*
  * Parser::parse() body definition
@@ -75,8 +80,23 @@ xquery  : END
         | query END
 ;
 
-query   : ap                {   SET_ROOT($1);    }
-        | rp                {   SET_ROOT($1);    }
+query   : ap                {
+                                $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::AP, {$1}));
+                                SET_ROOT($$);
+                            }
+        | rp                {
+                                $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
+                                SET_ROOT($$);
+                            }
+;
+
+ap      : DOC PATH_SEP rp   {
+                                auto doc = NEW_NODE(xquery::lang::Document(*$1));
+                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
+                                $$ = NEW_NODE(xquery::lang::PathSeparator(*$2, {doc, rp}));
+                                delete $1;
+                                delete $2;
+                            }
 ;
 
 rp      : TAG               {
@@ -89,25 +109,48 @@ rp      : TAG               {
                             }
         | TEXT              {   $$ = NEW_NODE(xquery::lang::Text());    }
         | rp PATH_SEP rp    {
-                                auto psep = NEW_NODE(xquery::lang::PathSeparator(*$2));
-                                $$ = NEW_NODE(xquery::lang::NonTerminalNode(
-                                                xquery::lang::RP,
-                                                {$1, psep, $3}));
+                                auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
+                                auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
+                                $$ = NEW_NODE(xquery::lang::PathSeparator(*$2, {rp1, rp2}));
                                 delete $2;
                             }
-        | '(' rp ')'        {}
-        | rp '[' ']'        {}
-        | rp ',' rp         {}
+        | '(' rp ')'        {
+                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$2}));
+                                $$ = NEW_NODE(xquery::lang::Precedence({rp}));
+                            }
+        | rp ',' rp         {
+                                auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
+                                auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
+                                $$ = NEW_NODE(xquery::lang::Concatenation({rp1, rp2}));
+                            }
+        | rp '[' f ']'      {
+                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
+                                auto f = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$3}));
+                                $$ = NEW_NODE(xquery::lang::Filter({rp, f}));
+                            }
 ;
 
-ap      : DOC PATH_SEP rp   {
-                                auto doc = NEW_NODE(xquery::lang::Document(*$1));
-                                auto psep = NEW_NODE(xquery::lang::PathSeparator(*$2));
-                                $$ = NEW_NODE(xquery::lang::NonTerminalNode(
-                                                xquery::lang::AP,
-                                                {doc, psep, $3}));
-                                delete $1;
+f       : rp                {   $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));    }
+        | rp EQUAL rp       {
+                                auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
+                                auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
+                                $$ = NEW_NODE(xquery::lang::Equality(*$2, {rp1, rp2}));
                                 delete $2;
+                            }
+        | '(' f ')'         {
+                                auto f = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$2}));
+                                $$ = NEW_NODE(xquery::lang::Precedence({f}));
+                            }
+        | f LOGIC_JUNC f    {
+                                auto f1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$1}));
+                                auto f2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$3}));
+                                $$ = NEW_NODE(xquery::lang::LogicOperator(*$2, {f1, f2}));
+                                delete $2;
+                            }
+        | LOGIC_NEG f       {
+                                auto f = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$2}));
+                                $$ = NEW_NODE(xquery::lang::LogicOperator(*$1, {f}));
+                                delete $1;
                             }
 ;
 

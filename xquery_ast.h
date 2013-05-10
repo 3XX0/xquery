@@ -122,6 +122,9 @@ class Ast
                 throw std::ios_base::failure("Could not open " + filename);
             boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
             fs.close();
+#else
+            std::cerr << "Graphiz plotting is not supported.\
+              Try compiling with USE_BOOST_GRAPHVIZ=true" << std::endl;
 #endif
         }
 

@@ -58,5 +58,5 @@ clean:
 	rm -rf $(CLEANLIST) *.o $(TARGET)
 
 display_ast: $(DOT_AST)
-	dot -Tpng $(DOT_AST) > $(DOT_AST:.dot=.png)
+	dot -Gsize=10 -Tpng $(DOT_AST) > $(DOT_AST:.dot=.png)
 	display $(DOT_AST:.dot=.png)
