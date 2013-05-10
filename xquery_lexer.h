@@ -1,7 +1,7 @@
 #pragma once
 
 #undef  YY_DECL
-#define YY_DECL int XQuery::Lexer::yylex()
+#define YY_DECL int xquery::Lexer::yylex()
 
 #if !defined(yyFlexLexerOnce)
 #include <FlexLexer.h>
@@ -10,7 +10,7 @@
 #include "xquery_driver.h"
 #include "xquery_parser.tab.hh"
 
-namespace XQuery
+namespace xquery
 {
 
 class Lexer : public yyFlexLexer
@@ -24,7 +24,7 @@ class Lexer : public yyFlexLexer
         ~Lexer() = default;
 
         // Wrapper arround yylex called by Bison
-        int yylex(Parser::semantic_type* lval, Parser::location_type *lloc)
+        int Yylex(Parser::semantic_type* lval, Parser::location_type *lloc)
         {
             yylval_ = lval;
             yylloc_ = lloc;

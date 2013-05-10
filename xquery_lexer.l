@@ -4,7 +4,7 @@
 
     #include "xquery_lexer.h"
 
-    typedef XQuery::Parser::token token;
+    typedef xquery::Parser::token token;
 
     // Define yyterminate as a token instead of NULL
     #ifndef yyterminate
@@ -71,7 +71,7 @@ CSTRING         \"[^\"]*\"
 {TEXT_KEYWORD}          return token::TEXT;
 
                         /* Convert delimiters in tokens */
-{DELIMITER}             return XQuery::Parser::token_type(yytext[0]);
+{DELIMITER}             return xquery::Parser::token_type(yytext[0]);
 
 {BLANK}                 yylloc_->step();
 {ENDL}              {
@@ -79,7 +79,7 @@ CSTRING         \"[^\"]*\"
                         yylloc_->step();
                     }
 .                   {
-                        driver_.error(*yylloc_, "invalid character");
+                        driver_.Error(*yylloc_, "invalid character");
                         return 1;
                     }
 

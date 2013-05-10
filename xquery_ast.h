@@ -4,8 +4,35 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <fstream>
 
-namespace XQuery
+#ifdef USE_BOOST_GRAPHVIZ
+#include <boost/graph/graphviz.hpp>
+
+template <typename Container>
+class graphviz_label_writer
+{
+    public:
+        graphviz_label_writer(const Container& container) : container_(container) {}
+
+        template <class VertexId>
+        void operator()(std::ostream& out, const VertexId& id) const
+        {
+            out << "[label=\"" << container_[id]->label() << "\"]";
+        }
+
+    private:
+        const Container& container_;
+};
+
+template <typename Container>
+inline graphviz_label_writer<Container> make_graphviz_label_writer(const Container& c)
+{
+    return {c};
+}
+#endif
+
+namespace xquery
 {
 
 class Node
@@ -20,7 +47,6 @@ class Node
             edges_.clear();
         }
 
-        virtual void trace() const = 0;
         const_iterator begin() const
         {
             return std::begin(edges_);
@@ -30,8 +56,27 @@ class Node
             return std::end(edges_);
         }
 
+        void set_label(const std::string& label)
+        {
+            label_ = label;
+        }
+        const std::string& label() const
+        {
+            return label_;
+        }
+        void set_id(size_t id)
+        {
+            id_ = id;
+        }
+        size_t id() const
+        {
+            return id_;
+        }
+
     protected:
         std::vector<const Node*> edges_;
+        std::string              label_;
+        size_t                   id_ = 0;
 };
 
 class Ast
@@ -44,32 +89,54 @@ class Ast
         {
             nodes_.clear();
         }
-        const Node* addNode(const Node* node)
+
+        const Node* AddNode(Node* node)
         {
+            node->set_id(nodes_.size());
             nodes_.push_back(NodeUPtr(node));
             return node;
         }
-        void setRoot(const Node* node)
+        void PlotGraph() const
+        {
+#ifdef USE_BOOST_GRAPHVIZ
+            typedef std::pair<size_t, size_t> GraphEdge;
+            typedef boost::adjacency_list<> Graph;
+
+            std::vector<GraphEdge> graph_edges;
+            std::string filename = "ast.dot";
+
+            std::function<void (const Node*)> trace =
+              [&](const Node* node) {
+                  const auto kParentId = node->id();
+                  for (auto child : *node) {
+                      graph_edges.push_back({kParentId, child->id()});
+                      trace(child);
+                  }
+              };
+
+            assert(root_ != nullptr);
+            trace(root_);
+            Graph g(std::begin(graph_edges), std::end(graph_edges), nodes_.size());
+            std::ofstream fs(filename);
+            if ( !fs.good())
+                throw std::ios_base::failure("Could not open " + filename);
+            boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
+            fs.close();
+#endif
+        }
+
+        void set_root(const Node* node)
         {
             root_ = node;
         }
-        void print() const
+        const Node* root() const
         {
-            assert(root_ != nullptr);
-
-            std::function<void (const Node*)> trace =
-              [&trace](const Node* node) {
-                  node->trace();
-                  for (auto children : *node) {
-                      trace(children);
-                  }
-              };
-            trace(root_);
+            return root_;
         }
 
     private:
-        const Node*           root_ = nullptr;
         std::vector<NodeUPtr> nodes_;
+        const Node*           root_ = nullptr;
 };
 
 }

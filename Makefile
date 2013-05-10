@@ -1,8 +1,14 @@
 CXX = g++
-CXXFLAGS = -O2 -W -Wextra -Wall -std=c++11
+CXXFLAGS = -O3 -W -Wextra -Wall -std=c++11
 LDFLAGS = -lfl
 
+ifdef USE_BOOST_GRAPHVIZ
+CXXFLAGS += -DUSE_BOOST_GRAPHVIZ
+LDFLAGS += -lboost_graph
+endif
+
 TARGET = xquery
+DOT_AST = ast.dot
 
 SRCS = main.cc \
        xquery_driver.cc \
@@ -21,23 +27,36 @@ CLEANLIST = xquery_parser.tab.cc \
             location.hh \
             stack.hh \
             position.hh \
+            ast.dot \
+            ast.png
 
-.PHONY: all clean
+.PHONY: all clean display_ast
 .SUFFIXES: .yy .cc .l
+
+BLUE = "\033[1;34m"
+NORMAL = "\033[0m"
 
 all:	$(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS) 
 
 .yy.o:
+	@echo -ne $(BLUE)
 	bison -d -v $<
+	@echo -ne $(NORMAL)
 	$(CXX) $(CXXFLAGS) -c xquery_parser.tab.cc -o xquery_parser.o
 
 .l.o:
+	@echo -ne $(BLUE)
 	flex -o xquery_lexer.cc $<
-	$(CXX)  $(CXXFLAGS) -c xquery_lexer.cc -o xquery_lexer.o
+	@echo -ne $(NORMAL)
+	$(CXX) $(CXXFLAGS) -c xquery_lexer.cc -o xquery_lexer.o
 
 .cc.o:
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(CLEANLIST) *.o $(TARGET)
+
+display_ast: $(DOT_AST)
+	dot -Tpng $(DOT_AST) > $(DOT_AST:.dot=.png)
+	display $(DOT_AST:.dot=.png)

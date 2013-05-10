@@ -8,16 +8,15 @@ int main(const int argc, const char* argv[])
     if (argc != 2) {
         std::cout << "Usage: " << argv[0] << " filename" << std::endl;
         return EXIT_FAILURE;
-
     }
 
     try {
-        XQuery::Driver driver;
+        xquery::Driver driver;
 
-        driver.parse(argv[1]);
+        driver.Parse(argv[1]);
     }
     catch (const std::exception &e) {
-        std::cerr << "Uncaught exception: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
