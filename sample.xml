@@ -1,1 +1,1 @@
-doc(file.pdf)//*/../hello/world/text(),(foo/bar[not(a==b[c and d])])
+doc(file.pdf) // * / .. / hello / world/text() , (foo / bar[not (a == b[c and d]) ])

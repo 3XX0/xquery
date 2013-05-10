@@ -22,7 +22,7 @@
 %option c++
 
 DELIMITER       [\(\)\[\],\/]
-BLANK           [:blank:]+
+BLANK           [ \t]+
 ENDL            \n
 EQUALITY        =|eq|==|is
 LOGIC_JUNCTION  or|and
