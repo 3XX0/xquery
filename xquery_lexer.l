@@ -32,6 +32,17 @@ TEXT_KEYWORD    text\(\)
 PATH_SEPARATOR  \/\/?
 PATH_GLOBBING   \*|\.\.?
 TAGNAME         [[:alnum:]_]+
+OPEN_TAG        <{TAGNAME}>\{
+CLOSE_TAG       \}<\/{TAGNAME}>
+FOR             for
+IN              in
+LET             let
+AFFECTATION     :=
+WHERE           where
+RETURN          return
+EMPTY           empty
+SOME            some
+SATISFIES       satisfies
 FILENAME        [[:alnum:]_]+(\.[[:alnum:]_]+)?
 VARIABLE        \$[[:alnum:]_]+
 CSTRING         \"[^\"]*\"
@@ -57,11 +68,11 @@ CSTRING         \"[^\"]*\"
                     }
 {PATH_SEPARATOR}    {
                         yylval_->sval = STOKEN(yytext);
-                        return token::PATH_SEP;
+                        return token::PSEP;
                     }
 {PATH_GLOBBING}     {
                         yylval_->sval = STOKEN(yytext);
-                        return token::PATH_GLOB;
+                        return token::PGLOB;
                     }
 {EQUALITY}          {
                         yylval_->sval = STOKEN(yytext);
@@ -69,20 +80,44 @@ CSTRING         \"[^\"]*\"
                     }
 {LOGIC_JUNCTION}    {
                         yylval_->sval = STOKEN(yytext);
-                        return token::LOGIC_JUNC;
+                        return token::LJUNC;
                     }
 {LOGIC_NEGATION}    {
                         yylval_->sval = STOKEN(yytext);
-                        return token::LOGIC_NEG;
+                        return token::LNEG;
                     }
-{TAGNAME}           {
-                        yylval_->sval = STOKEN(yytext);
-                        return token::TAG;
+{VARIABLE}          {
+                        yylval_->sval = STOKEN(yytext+1, yyleng-1);
+                        return token::VAR;
                     }
-{TEXT_KEYWORD}          return token::TEXT;
-
+{CSTRING}           {
+                        yylval_->sval = STOKEN(yytext+1, yyleng-2);
+                        return token::CSTR;
+                    }
+{OPEN_TAG}          {
+                        yylval_->sval = STOKEN(yytext+1, yyleng-3);
+                        return token::OTAG;
+                    }
+{CLOSE_TAG}         {
+                        yylval_->sval = STOKEN(yytext+3, yyleng-4);
+                        return token::CTAG;
+                    }
                         /* Convert delimiters in tokens */
 {DELIMITER}             return xquery::Parser::token_type(yytext[0]);
+{TEXT_KEYWORD}          return token::TEXT;
+{FOR}                   return token::FOR;
+{IN}                    return token::IN;
+{LET}                   return token::LET;
+{AFFECTATION}           return token::AFFECT;
+{WHERE}                 return token::WHERE;
+{RETURN}                return token::RET;
+{EMPTY}                 return token::EMPTY;
+{SOME}                  return token::SOME;
+{SATISFIES}             return token::SATISFY;
+{TAGNAME}           {
+                        yylval_->sval = STOKEN(yytext);
+                        return token::TAGNAME;
+                    }
 
 {BLANK}                 yylloc_->step();
 {ENDL}              {

@@ -96,6 +96,17 @@ class Ast
             nodes_.push_back(NodeUPtr(node));
             return node;
         }
+        // Used to populate multiedges nodes
+        void MultiEdgesPush(const Node* node)
+        {
+            edges_buf_.push_back(node);
+        }
+        std::vector<const Node*> MultiEdgesPop()
+        {
+            auto edges_buf = edges_buf_;
+            edges_buf_.clear();
+            return edges_buf;
+        }
         void PlotGraph() const
         {
 #ifdef USE_BOOST_GRAPHVIZ
@@ -123,8 +134,8 @@ class Ast
             boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
             fs.close();
 #else
-            std::cerr << "Graphiz plotting is not supported.\
-              Try compiling with USE_BOOST_GRAPHVIZ=true" << std::endl;
+            std::cerr << "Graphiz plotting is not supported. " <<
+              "Try compiling with USE_BOOST_GRAPHVIZ=true" << std::endl;
 #endif
         }
 
@@ -138,8 +149,9 @@ class Ast
         }
 
     private:
-        std::vector<NodeUPtr> nodes_;
-        const Node*           root_ = nullptr;
+        std::vector<NodeUPtr>     nodes_;
+        std::vector<const Node*>  edges_buf_;
+        const Node*               root_ = nullptr;
 };
 
 }

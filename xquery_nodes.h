@@ -10,9 +10,11 @@ namespace xquery { namespace lang
 
 enum NTLabel // Non terminal labels
 {
-    AP, // Absolute path
-    RP, // Relative path
-    F   // Filter
+    AP,   // Absolute path
+    RP,   // Relative path
+    F,    // Filter
+    XQ,   // XQuery
+    COND  // Condition
 };
 
 typedef std::vector<const Node*> Edges;
@@ -32,7 +34,9 @@ class NonTerminalNode : public Node
         const std::unordered_map<NTLabel, std::string, std::hash<int>> kMap_= {
             {AP, "AP"},
             {RP, "RP"},
-            {F, "F"}
+            {F, "F"},
+            {XQ, "XQ"},
+            {COND, "COND"}
         };
         NTLabel label_;
 };
@@ -42,7 +46,7 @@ class TagName : public Node
     public:
         TagName(const std::string& tagname) : tagname_(tagname)
         {
-            set_label("TagName `" + tagname_ +"'");
+            set_label("TagName `" + tagname_ + "'");
         }
         ~TagName() = default;
 
@@ -210,6 +214,136 @@ class LogicOperator : public Node
             {"not", NOT}
         };
         OpType op_;
+};
+
+class Variable : public Node
+{
+    public:
+        Variable(const std::string& varname) : varname_(varname)
+        {
+            set_label("Variable `" + varname_ + "'");
+        }
+        ~Variable() = default;
+
+    private:
+        std::string varname_;
+};
+
+class ConstantString : public Node
+{
+    public:
+        ConstantString(const std::string& cstring) : cstring_(cstring)
+        {
+            set_label("ConstantString `" + cstring_ + "'");
+        }
+        ~ConstantString() = default;
+
+    private:
+        std::string cstring_;
+};
+
+class Tag : public Node
+{
+    public:
+        Tag(const std::string& otagname, const std::string& ctagname, Edges&& edges)
+            : Node(std::forward<Edges>(edges)),
+              tagname_(otagname)
+        {
+            set_label("Tag `" + tagname_ + "'");
+            assert(ctagname == otagname);
+        }
+        ~Tag() = default;
+
+    private:
+        std::string tagname_;
+};
+
+class LetClause : public Node
+{
+    public:
+        LetClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("LetClause");
+            assert(edges_.size() >= 1);
+        }
+        ~LetClause() = default;
+};
+
+class WhereClause : public Node
+{
+    public:
+        WhereClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("WhereClause");
+            assert(edges_.size() == 1);
+        }
+        ~WhereClause() = default;
+};
+
+class ForClause : public Node
+{
+    public:
+        ForClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("ForClause");
+            assert(edges_.size() >= 1);
+        }
+        ~ForClause() = default;
+};
+
+class ReturnClause : public Node
+{
+    public:
+        ReturnClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("ReturnClause");
+            assert(edges_.size() == 1);
+        }
+        ~ReturnClause() = default;
+};
+
+class ForExpression : public Node
+{
+    public:
+        ForExpression(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("ForExpression");
+            assert(edges_.size() >= 2);
+        }
+        ~ForExpression() = default;
+};
+
+class Tuple : public Node
+{
+    public:
+        Tuple(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("Tuple");
+            assert(edges_.size() == 2);
+        }
+        ~Tuple() = default;
+};
+
+class SomeClause : public Node
+{
+    public:
+        SomeClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("SomeClause");
+            assert(edges_.size() >= 2);
+        }
+        ~SomeClause() = default;
+};
+
+class Empty : public Node
+{
+    public:
+        Empty(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("Empty");
+            assert(edges_.size() == 1);
+        }
+        ~Empty() = default;
 };
 
 }}
