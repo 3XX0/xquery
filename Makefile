@@ -1,5 +1,6 @@
 CXX = g++
-CXXFLAGS = -O3 -W -Wextra -Wall -std=c++11
+XMLPP_ENV ?= `pkg-config --cflags libxml++-2.6`
+CXXFLAGS = -O3 -W -Wextra -Wall -std=c++11 $(XMLPP_ENV)
 LDFLAGS = -lfl
 
 ifdef USE_BOOST_GRAPHVIZ
@@ -12,12 +13,16 @@ DOT_AST = ast.dot
 
 SRCS = main.cc \
        xquery_driver.cc \
+       xquery_nodes.cc \
+       xquery_ast.cc \
        xquery_parser.yy \
        xquery_lexer.l \
 
 OBJS = xquery_parser.o \
        xquery_lexer.o \
        xquery_driver.o \
+       xquery_nodes.o \
+       xquery_ast.o \
        main.o \
 
 CLEANLIST = xquery_parser.tab.cc \

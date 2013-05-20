@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <cassert>
 #include <algorithm>
 
 #include "xquery_ast.h"
@@ -17,8 +18,6 @@ enum NTLabel // Non terminal labels
     COND  // Condition
 };
 
-typedef std::vector<const Node*> Edges;
-
 class NonTerminalNode : public Node
 {
     public:
@@ -27,8 +26,11 @@ class NonTerminalNode : public Node
             label_(label)
         {
             set_label("NonTerminalNode `" + kMap_.at(label) + "'"); 
+            assert(edges_.size() == 1);
         }
         ~NonTerminalNode() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<NTLabel, std::string, std::hash<int>> kMap_= {
@@ -50,6 +52,8 @@ class TagName : public Node
         }
         ~TagName() = default;
 
+        EvalResult Eval(const EvalResult& res) const override;
+
     private:
         std::string tagname_;
 };
@@ -62,6 +66,8 @@ class Text : public Node
             set_label("Text");
         }
         ~Text() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Document : public Node
@@ -72,6 +78,8 @@ class Document : public Node
             set_label("Document `" + name_ + "'");
         }
         ~Document() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         std::string name_;
@@ -94,6 +102,8 @@ class PathSeparator : public Node
             assert(edges_.size() == 2);
         }
         ~PathSeparator() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<std::string, SepType> kMap_= {
@@ -120,6 +130,8 @@ class PathGlobbing : public Node
         }
         ~PathGlobbing() = default;
 
+        EvalResult Eval(const EvalResult& res) const override;
+
     private:
         const std::unordered_map<std::string, GlobType> kMap_= {
             {"*", WILDCARD},
@@ -138,6 +150,8 @@ class Precedence : public Node
             assert(edges_.size() == 1);
         }
         ~Precedence() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Concatenation : public Node
@@ -149,6 +163,8 @@ class Concatenation : public Node
             assert(edges_.size() == 2);
         }
         ~Concatenation() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Filter : public Node
@@ -160,6 +176,8 @@ class Filter : public Node
             assert(edges_.size() == 2);
         }
         ~Filter() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Equality : public Node
@@ -178,6 +196,8 @@ class Equality : public Node
             assert(edges_.size() == 2);
         }
         ~Equality() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<std::string, EqType> kMap_= {
@@ -207,6 +227,8 @@ class LogicOperator : public Node
         }
         ~LogicOperator() = default;
 
+        EvalResult Eval(const EvalResult& res) const override;
+
     private:
         const std::unordered_map<std::string, OpType> kMap_= {
             {"and", AND},
@@ -225,6 +247,8 @@ class Variable : public Node
         }
         ~Variable() = default;
 
+        EvalResult Eval(const EvalResult& res) const override;
+
     private:
         std::string varname_;
 };
@@ -237,6 +261,8 @@ class ConstantString : public Node
             set_label("ConstantString `" + cstring_ + "'");
         }
         ~ConstantString() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         std::string cstring_;
@@ -254,6 +280,8 @@ class Tag : public Node
         }
         ~Tag() = default;
 
+        EvalResult Eval(const EvalResult& res) const override;
+
     private:
         std::string tagname_;
 };
@@ -267,6 +295,8 @@ class LetClause : public Node
             assert(edges_.size() >= 1);
         }
         ~LetClause() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class WhereClause : public Node
@@ -278,6 +308,8 @@ class WhereClause : public Node
             assert(edges_.size() == 1);
         }
         ~WhereClause() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class ForClause : public Node
@@ -289,6 +321,8 @@ class ForClause : public Node
             assert(edges_.size() >= 1);
         }
         ~ForClause() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class ReturnClause : public Node
@@ -300,6 +334,8 @@ class ReturnClause : public Node
             assert(edges_.size() == 1);
         }
         ~ReturnClause() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class FLWRExpression : public Node
@@ -311,6 +347,8 @@ class FLWRExpression : public Node
             assert(edges_.size() >= 2);
         }
         ~FLWRExpression() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class LetExpression : public Node
@@ -322,6 +360,8 @@ class LetExpression : public Node
             assert(edges_.size() == 2);
         }
         ~LetExpression() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Tuple : public Node
@@ -333,6 +373,8 @@ class Tuple : public Node
             assert(edges_.size() == 2);
         }
         ~Tuple() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class SomeClause : public Node
@@ -341,9 +383,11 @@ class SomeClause : public Node
         SomeClause(Edges&& edges) : Node(std::forward<Edges>(edges))
         {
             set_label("SomeClause");
-            assert(edges_.size() >= 2);
+            assert(edges_.size() >= 1); 
         }
         ~SomeClause() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Empty : public Node
@@ -355,6 +399,8 @@ class Empty : public Node
             assert(edges_.size() == 1);
         }
         ~Empty() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 }}
