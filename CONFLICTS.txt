@@ -1,0 +1,38 @@
+In the following examples `{}' symbolizes the priority
+
+1. path separator VS. comma
+example:        hello/world,foo/bar
+correct:        {hello/world},{foo/bar}
+incorrect:      hello/{world,foo}/bar
+
+2. return VS. comma or path separator
+example:        [FLW] return foo/bar
+correct:        [FLW] return {foo/bar}
+incorrect:      {[FLW] return foo}/bar
+
+3. let VS. comma or path separator
+example:        let $a := "helloworld" doc(test.xml)/hello/world
+correct:        {let $a := "helloworld" doc(test.xml)/hello/world}
+incorrect       {let $a := "helloworld" doc(test.xml)/hello}/world
+
+4. not VS. and/or
+example:        [FL] where not empty($a) and empty($b) [R]
+correct:        [FL] where not {empty($a) and empty($b)} [R]
+incorrect:      [FL] where {not empty($a)} and empty($b) [R]
+
+5. filter VS. comma or path separator
+example:        doc(test.xml)//foo/bar/hello[world]
+correct:        doc(test.xml)//{foo/bar/hello[world]}
+incorrect:      {doc(test.xml)//foo/bar/}hello[world]
+
+6. satisfies VS. and/or
+example:        [FL] where some $a in "helloworld" satisfies empty($a) and empty($b) [R]
+correct:        [FL] {where some $a in "helloworld" satisfies empty($a) and empty($b)} [R]
+incorrect:      [FL] {where some $a in "helloworld" satisfies empty($a)} and empty($b) [R]
+
+7. tuples conflict
+unknown: ???
+
+8. relative path VS. filter
+example:        hello/world[(..)]
+(..) is either a (RP) or a (F)

@@ -1,6 +1,6 @@
 <a>{
-        for $toto in  doc(file.pdf) // * / .. / hello / world/text() , (foo / bar[not (a == b[(c and d)]) ])
-        , $tutu in "zetta"
-        where some $toto in $tutu satisfies let $titi := "titi" == doc("file")/*
+        for $toto in  doc(file.pdf)//(*/../hello/world/text() , (foo / bar[not (a == b[(c and d)]) ])), $b in "kk"
+        let $a := $a, $b := $b, $c := $c
+        where some $toto in $tutu satisfies let $titi := "titi" $toto == doc(file)/(*)
         return "0"
 }</a>

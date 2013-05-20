@@ -302,15 +302,26 @@ class ReturnClause : public Node
         ~ReturnClause() = default;
 };
 
-class ForExpression : public Node
+class FLWRExpression : public Node
 {
     public:
-        ForExpression(Edges&& edges) : Node(std::forward<Edges>(edges))
+        FLWRExpression(Edges&& edges) : Node(std::forward<Edges>(edges))
         {
-            set_label("ForExpression");
+            set_label("FLWRExpression");
             assert(edges_.size() >= 2);
         }
-        ~ForExpression() = default;
+        ~FLWRExpression() = default;
+};
+
+class LetExpression : public Node
+{
+    public:
+        LetExpression(Edges&& edges) : Node(std::forward<Edges>(edges))
+        {
+            set_label("LetExpression");
+            assert(edges_.size() == 2);
+        }
+        ~LetExpression() = default;
 };
 
 class Tuple : public Node

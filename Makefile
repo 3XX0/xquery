@@ -30,7 +30,7 @@ CLEANLIST = xquery_parser.tab.cc \
             ast.dot \
             ast.png
 
-.PHONY: all clean display_ast
+.PHONY: all clean ast
 .SUFFIXES: .yy .cc .l
 
 BLUE = "\033[1;34m"
@@ -57,6 +57,6 @@ all:	$(OBJS)
 clean:
 	rm -rf $(CLEANLIST) *.o $(TARGET)
 
-display_ast: $(DOT_AST)
-	dot -Gsize=10 -Tpng $(DOT_AST) > $(DOT_AST:.dot=.png)
+ast:	$(DOT_AST)
+	dot -Tpng $(DOT_AST) > $(DOT_AST:.dot=.png)
 	display $(DOT_AST:.dot=.png)

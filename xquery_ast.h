@@ -56,6 +56,11 @@ class Node
             return std::end(edges_);
         }
 
+        void AddEdge(const Node* node) const
+        {
+            edges_.push_back(node);
+        }
+
         void set_label(const std::string& label)
         {
             label_ = label;
@@ -74,14 +79,15 @@ class Node
         }
 
     protected:
-        std::vector<const Node*> edges_;
-        std::string              label_;
-        size_t                   id_ = 0;
+        mutable std::vector<const Node*> edges_;
+        std::string                      label_;
+        size_t                           id_ = 0;
 };
 
 class Ast
 {
     typedef std::unique_ptr<const Node> NodeUPtr;
+    typedef std::vector<const Node*>    Edges;
 
     public:
         Ast() = default;
@@ -96,16 +102,16 @@ class Ast
             nodes_.push_back(NodeUPtr(node));
             return node;
         }
-        // Used to populate multiedges nodes
-        void MultiEdgesPush(const Node* node)
+        // Helpers to populate the edges of a node using a recursion rule
+        void BufferizeEdge(const Node* node)
         {
             edges_buf_.push_back(node);
         }
-        std::vector<const Node*> MultiEdgesPop()
+        Edges UnbufferizeEdges()
         {
-            auto edges_buf = edges_buf_;
+            auto edges = edges_buf_;
             edges_buf_.clear();
-            return edges_buf;
+            return edges;
         }
         void PlotGraph() const
         {
@@ -149,9 +155,9 @@ class Ast
         }
 
     private:
-        std::vector<NodeUPtr>     nodes_;
-        std::vector<const Node*>  edges_buf_;
-        const Node*               root_ = nullptr;
+        std::vector<NodeUPtr> nodes_;
+        Edges                 edges_buf_;
+        const Node*           root_ = nullptr;
 };
 
 }

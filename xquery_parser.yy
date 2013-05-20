@@ -45,8 +45,8 @@
 
     #define NEW_NODE(x) driver.ast_.AddNode(new x)
     #define SET_ROOT(x) driver.ast_.set_root(x)
-    #define BUFFERIZE(x) driver.ast_.MultiEdgesPush(x)
-    #define UNBUFFERIZE() driver.ast_.MultiEdgesPop()
+    #define BUFFERIZE(x) driver.ast_.BufferizeEdge(x)
+    #define UNBUFFERIZE() driver.ast_.UnbufferizeEdges()
 }
 
 %union
@@ -89,25 +89,25 @@
 %type <node> let
 %type <node> where
 %type <node> return
+%type <node> some
 %type <node> cond
 
 /*
  * Parser::parse() body definition
  */
 
-/* Precedence (lower to higher priority) */
-%nonassoc RP_PREC
-%left ','
-%nonassoc LET_PREC
-%nonassoc RET_PREC
-%nonassoc TUP_PREC
-%left '[' ']'
-%left PSEP
-%left EQUAL
+/* Precedences */
+%nonassoc RP
+%nonassoc '(' ')'
+%nonassoc LNEG
+%nonassoc SATISFY
 %left LJUNC
-%left LNEG
-%left SATISFY
-%left '(' ')'
+%nonassoc RET
+%nonassoc LET
+%nonassoc '['
+%left ','
+%right PSEP
+%nonassoc TUPLE
 
 %%
 
@@ -149,17 +149,18 @@ xq      : VAR               {
                                 delete $3;
                             }
         | for let where
-          return            {   $$ = NEW_NODE(xquery::lang::ForExpression({$1, $2, $3, $4}));   }
-        | for where
-          return            {   $$ = NEW_NODE(xquery::lang::ForExpression({$1, $2, $3}));   }
-        | for let return    {   $$ = NEW_NODE(xquery::lang::ForExpression({$1, $2, $3}));   }
-        | for return        {   $$ = NEW_NODE(xquery::lang::ForExpression({$1, $2}));   }
-        | let xq
-          %prec LET_PREC    {   $$ = NEW_NODE(xquery::lang::LetClause({$1}));   }
+          return            {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2, $3, $4}));   }
+        | for where return  {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2, $3}));   }
+        | for let return    {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2, $3}));   }
+        | for return        {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2}));   }
+        | let xq %prec LET  {
+                                auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$2}));
+                                $$ = NEW_NODE(xquery::lang::LetExpression({$1, xq}));
+                            }
 ;
 
 fstuple : VAR IN xq
-          %prec TUP_PREC    {
+          %prec TUPLE       {
                                 auto var = NEW_NODE(xquery::lang::Variable(*$1));
                                 auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$3}));
                                 BUFFERIZE(NEW_NODE(xquery::lang::Tuple({var, xq})));
@@ -170,7 +171,7 @@ fstuple : VAR IN xq
 ;
 
 ltuple  : VAR AFFECT xq
-          %prec TUP_PREC    {
+          %prec TUPLE       {
                                 auto var = NEW_NODE(xquery::lang::Variable(*$1));
                                 auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$3}));
                                 BUFFERIZE(NEW_NODE(xquery::lang::Tuple({var, xq})));
@@ -188,8 +189,10 @@ let     : LET ltuple        {   $$ = NEW_NODE(xquery::lang::LetClause(UNBUFFERIZ
 where   : WHERE cond        {   $$ = NEW_NODE(xquery::lang::WhereClause({$2}));   }
 ;
 
-return  : RET xq
-          %prec RET_PREC    {   $$ = NEW_NODE(xquery::lang::ReturnClause({$2}));   }
+return  : RET xq            {   $$ = NEW_NODE(xquery::lang::ReturnClause({$2}));   }
+;
+
+some    : SOME fstuple      {   $$ = NEW_NODE(xquery::lang::SomeClause(UNBUFFERIZE()));   }
 ;
 
 cond    : xq EQUAL xq       {
@@ -215,10 +218,10 @@ cond    : xq EQUAL xq       {
                                 delete $1;
                             }
         | EMPTY '(' xq ')'  {   $$ = NEW_NODE(xquery::lang::Empty({$3}));   }
-        | SOME fstuple
-          SATISFY cond      {
-                                BUFFERIZE(NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$4})));
-                                $$ = NEW_NODE(xquery::lang::SomeClause(UNBUFFERIZE()));
+        | some SATISFY cond {
+                                auto cond = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$3}));
+                                $1->AddEdge(cond);
+                                $$ = $1;
                             }
 ;
 
@@ -262,7 +265,7 @@ rp      : TAGNAME           {
                             }
 ;
 
-f       : rp %prec RP_PREC  {   $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));   }
+f       : rp %prec RP       {   $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));   }
         | rp EQUAL rp       {
                                 auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
                                 auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));

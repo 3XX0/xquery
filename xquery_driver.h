@@ -20,7 +20,7 @@ class Driver
         Driver() : parser_(nullptr), lexer_(nullptr) {};
         virtual ~Driver() = default;
 
-        void Parse(const char* filename);
+        int Parse(const char* filename);
         void Error(const std::string& msg) const
         {
             std::cerr << msg << std::endl;

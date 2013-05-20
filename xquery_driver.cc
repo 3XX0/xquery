@@ -3,7 +3,7 @@
 
 #include "xquery_driver.h"
 
-void xquery::Driver::Parse(const char* filename)
+int xquery::Driver::Parse(const char* filename)
 {
     assert(filename != nullptr);
     set_filename(filename);
@@ -16,8 +16,11 @@ void xquery::Driver::Parse(const char* filename)
     lexer_ = std::unique_ptr<Lexer>(new Lexer(*this, fs));
     parser_ = std::unique_ptr<Parser>(new Parser(*lexer_, *this));
 
-    if ( parser_->parse())
+    if ( parser_->parse()) {
         Error("Parsing failed");
-    else
-        ast_.PlotGraph();
+        return 1;
+    }
+
+    ast_.PlotGraph();
+    return 0;
 }
