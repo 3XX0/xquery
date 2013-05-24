@@ -22,10 +22,10 @@ class NonTerminalNode : public Node
 {
     public:
         NonTerminalNode(NTLabel label, Edges&& edges)
-          : Node(std::forward<Edges>(edges)),
-            label_(label)
+          : Node{std::move(edges)},
+            label_{label}
         {
-            set_label("NonTerminalNode `" + kMap_.at(label) + "'"); 
+            set_label("NonTerminalNode `" + kMap_.at(label) + "'");
             assert(edges_.size() == 1);
         }
         ~NonTerminalNode() = default;
@@ -46,7 +46,7 @@ class NonTerminalNode : public Node
 class TagName : public Node
 {
     public:
-        TagName(const std::string& tagname) : tagname_(tagname)
+        TagName(const std::string& tagname) : tagname_{tagname}
         {
             set_label("TagName `" + tagname_ + "'");
         }
@@ -73,7 +73,7 @@ class Text : public Node
 class Document : public Node
 {
     public:
-        Document(const std::string& name) : name_(name)
+        Document(const std::string& name) : name_{name}
         {
             set_label("Document `" + name_ + "'");
         }
@@ -82,7 +82,8 @@ class Document : public Node
         EvalResult Eval(const EvalResult& res) const override;
 
     private:
-        std::string name_;
+        mutable xml::DomParser parser_;
+        std::string            name_;
 };
 
 class PathSeparator : public Node
@@ -95,7 +96,7 @@ class PathSeparator : public Node
 
     public:
         PathSeparator(const std::string& token, Edges&& edges)
-          : Node(std::forward<Edges>(edges))
+          : Node{std::move(edges)}
         {
             sep_ = kMap_.at(token);
             set_label("PathSeparator `" + token + "'");
@@ -144,7 +145,7 @@ class PathGlobbing : public Node
 class Precedence : public Node
 {
     public:
-        Precedence(Edges&& edges) : Node(std::forward<Edges>(edges))
+        Precedence(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("Precedence");
             assert(edges_.size() == 1);
@@ -157,7 +158,7 @@ class Precedence : public Node
 class Concatenation : public Node
 {
     public:
-        Concatenation(Edges&& edges) : Node(std::forward<Edges>(edges))
+        Concatenation(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("Concatenation");
             assert(edges_.size() == 2);
@@ -170,7 +171,7 @@ class Concatenation : public Node
 class Filter : public Node
 {
     public:
-        Filter(Edges&& edges) : Node(std::forward<Edges>(edges))
+        Filter(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("Filter");
             assert(edges_.size() == 2);
@@ -189,7 +190,7 @@ class Equality : public Node
     };
 
     public:
-        Equality(const std::string& token, Edges&& edges) : Node(std::forward<Edges>(edges))
+        Equality(const std::string& token, Edges&& edges) : Node{std::move(edges)}
         {
             eq_ = kMap_.at(token);
             set_label("Equality `" + token + "'");
@@ -219,7 +220,7 @@ class LogicOperator : public Node
     };
 
     public:
-        LogicOperator(const std::string& token, Edges&& edges) : Node(std::forward<Edges>(edges))
+        LogicOperator(const std::string& token, Edges&& edges) : Node{std::move(edges)}
         {
             op_ = kMap_.at(token);
             set_label("LogicOperator `" + token + "'");
@@ -241,7 +242,7 @@ class LogicOperator : public Node
 class Variable : public Node
 {
     public:
-        Variable(const std::string& varname) : varname_(varname)
+        Variable(const std::string& varname) : varname_{varname}
         {
             set_label("Variable `" + varname_ + "'");
         }
@@ -256,7 +257,7 @@ class Variable : public Node
 class ConstantString : public Node
 {
     public:
-        ConstantString(const std::string& cstring) : cstring_(cstring)
+        ConstantString(const std::string& cstring) : cstring_{cstring}
         {
             set_label("ConstantString `" + cstring_ + "'");
         }
@@ -272,8 +273,8 @@ class Tag : public Node
 {
     public:
         Tag(const std::string& otagname, const std::string& ctagname, Edges&& edges)
-            : Node(std::forward<Edges>(edges)),
-              tagname_(otagname)
+            : Node{std::move(edges)},
+              tagname_{otagname}
         {
             set_label("Tag `" + tagname_ + "'");
             assert(ctagname == otagname);
@@ -289,7 +290,7 @@ class Tag : public Node
 class LetClause : public Node
 {
     public:
-        LetClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        LetClause(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("LetClause");
             assert(edges_.size() >= 1);
@@ -302,7 +303,7 @@ class LetClause : public Node
 class WhereClause : public Node
 {
     public:
-        WhereClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        WhereClause(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("WhereClause");
             assert(edges_.size() == 1);
@@ -315,7 +316,7 @@ class WhereClause : public Node
 class ForClause : public Node
 {
     public:
-        ForClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        ForClause(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("ForClause");
             assert(edges_.size() >= 1);
@@ -328,7 +329,7 @@ class ForClause : public Node
 class ReturnClause : public Node
 {
     public:
-        ReturnClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        ReturnClause(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("ReturnClause");
             assert(edges_.size() == 1);
@@ -341,7 +342,7 @@ class ReturnClause : public Node
 class FLWRExpression : public Node
 {
     public:
-        FLWRExpression(Edges&& edges) : Node(std::forward<Edges>(edges))
+        FLWRExpression(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("FLWRExpression");
             assert(edges_.size() >= 2);
@@ -354,7 +355,7 @@ class FLWRExpression : public Node
 class LetExpression : public Node
 {
     public:
-        LetExpression(Edges&& edges) : Node(std::forward<Edges>(edges))
+        LetExpression(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("LetExpression");
             assert(edges_.size() == 2);
@@ -367,7 +368,7 @@ class LetExpression : public Node
 class Tuple : public Node
 {
     public:
-        Tuple(Edges&& edges) : Node(std::forward<Edges>(edges))
+        Tuple(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("Tuple");
             assert(edges_.size() == 2);
@@ -380,7 +381,7 @@ class Tuple : public Node
 class SomeClause : public Node
 {
     public:
-        SomeClause(Edges&& edges) : Node(std::forward<Edges>(edges))
+        SomeClause(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("SomeClause");
             assert(edges_.size() >= 1); 
@@ -393,7 +394,7 @@ class SomeClause : public Node
 class Empty : public Node
 {
     public:
-        Empty(Edges&& edges) : Node(std::forward<Edges>(edges))
+        Empty(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("Empty");
             assert(edges_.size() == 1);

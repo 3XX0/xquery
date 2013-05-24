@@ -1,5 +1,6 @@
 #include <functional>
 #include <cassert>
+#include <iostream>
 #include <fstream>
 
 #include "xquery_ast.h"
@@ -11,7 +12,7 @@ template <typename Container>
 class graphviz_label_writer
 {
     public:
-        graphviz_label_writer(const Container& container) : container_(container) {}
+        graphviz_label_writer(const Container& container) : container_{container} {}
 
         template <class VertexId>
         void operator()(std::ostream& out, const VertexId& id) const
@@ -26,7 +27,7 @@ class graphviz_label_writer
 template <typename Container>
 inline graphviz_label_writer<Container> make_graphviz_label_writer(const Container& c)
 {
-    return {c};
+    return c;
 }
 #endif
 
@@ -36,12 +37,11 @@ namespace xquery
 void Ast::PlotGraph() const
 {
 #ifdef USE_BOOST_GRAPHVIZ
-    typedef std::pair<size_t, size_t> GraphEdge;
-    typedef boost::adjacency_list<> Graph;
+    using GraphEdge = std::pair<size_t, size_t>;
+    using Graph = boost::adjacency_list<>;
 
     std::vector<GraphEdge> graph_edges;
     std::string filename = "ast.dot";
-
     std::function<void (const Node*)> trace =
         [&](const Node* node) {
             const auto kParentId = node->id();
@@ -53,16 +53,32 @@ void Ast::PlotGraph() const
 
     assert(root_ != nullptr);
     trace(root_);
-    Graph g(std::begin(graph_edges), std::end(graph_edges), nodes_.size());
-    std::ofstream fs(filename);
+
+    Graph g{std::begin(graph_edges), std::end(graph_edges), nodes_.size()};
+    std::ofstream fs{filename};
+
     if ( !fs.good())
-        throw std::ios_base::failure("Could not open " + filename);
+        throw std::ios_base::failure{"Could not open " + filename};
     boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
     fs.close();
 #else
     std::cerr << "Graphiz plotting is not supported. " <<
-        "Try compiling with USE_BOOST_GRAPHVIZ=true" << std::endl;
+      "Try compiling with USE_BOOST_GRAPHVIZ=true" << std::endl;
 #endif
+}
+
+void Ast::Eval() const
+{
+    auto output = root_->Eval();
+
+    assert(output.type == Node::EvalResult::NODES);
+    for (const auto node : output.nodes) {
+        std::cout << "node: " << node->get_name();
+        const xml::Element* elem = dynamic_cast<const xml::Element*>(node);
+        if (elem != nullptr)
+            std::cout << " attr: " << elem->get_attribute("name")->get_value();
+        std::cout << std::endl;
+    }
 }
 
 }

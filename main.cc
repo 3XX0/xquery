@@ -18,4 +18,8 @@ int main(const int argc, const char* argv[])
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
+    catch (...) {
+        std::cerr << "Abort: Unhandled exception" << std::endl;
+        return 1;
+    }
 }

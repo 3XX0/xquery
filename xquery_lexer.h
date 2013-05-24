@@ -7,20 +7,21 @@
 #include <FlexLexer.h>
 #endif
 
+#include "xquery_misc.h"
 #include "xquery_driver.h"
 #include "xquery_parser.tab.hh"
 
 namespace xquery
 {
 
-class Lexer : public yyFlexLexer
+class Lexer : public yyFlexLexer, public NonCopyable, public NonMoveable
 {
     public:
         Lexer(const Driver& driver, std::istream& input)
-          : yyFlexLexer(&input),
-            driver_(driver),
-            yylval_(nullptr),
-            yylloc_(nullptr) {}
+          : yyFlexLexer{&input},
+            driver_{driver},
+            yylval_{nullptr},
+            yylloc_{nullptr} {}
         ~Lexer() = default;
 
         // Wrapper arround yylex called by Bison

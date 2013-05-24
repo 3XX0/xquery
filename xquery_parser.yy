@@ -43,10 +43,12 @@
                      xquery::Lexer &lexer,
                      xquery::Driver &driver);
 
-    #define NEW_NODE(x) driver.ast_.AddNode(new x)
+    #define NEW_NODE(...) driver.ast_.AddNode(new __VA_ARGS__)
     #define SET_ROOT(x) driver.ast_.set_root(x)
     #define BUFFERIZE(x) driver.ast_.BufferizeEdge(x)
     #define UNBUFFERIZE() driver.ast_.UnbufferizeEdges()
+
+    namespace xql = xquery::lang;
 }
 
 %union
@@ -116,54 +118,54 @@ xquery  : END
 ;
 
 query   : xq                {
-                                $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$1}));
+                                $$ = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$1}});
                                 SET_ROOT($$);
                             }
 ;
 
 xq      : VAR               {
-                                $$ = NEW_NODE(xquery::lang::Variable(*$1));
+                                $$ = NEW_NODE(xql::Variable{*$1});
                                 delete $1;
                             }
         | CSTR              {
-                                $$ = NEW_NODE(xquery::lang::ConstantString(*$1));
+                                $$ = NEW_NODE(xql::ConstantString{*$1});
                                 delete $1;
                             }
-        | ap                {   $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::AP, {$1}));   }
-        | '(' xq ')'        {   $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$2}));   }
+        | ap                {   $$ = NEW_NODE(xql::NonTerminalNode{xql::AP, {$1}});   }
+        | '(' xq ')'        {   $$ = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$2}});   }
         | xq ',' xq         {
-                                auto xq1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$1}));
-                                auto xq2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$3}));
-                                $$ = NEW_NODE(xquery::lang::Concatenation({xq1, xq2}));
+                                auto xq1 = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$1}});
+                                auto xq2 = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
+                                $$ = NEW_NODE(xql::Concatenation{{xq1, xq2}});
                             }
         | xq PSEP rp        {
-                                auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$1}));
-                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
-                                $$ = NEW_NODE(xquery::lang::PathSeparator(*$2, {xq, rp}));
+                                auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$1}});
+                                auto rp = NEW_NODE(xql::NonTerminalNode{xql::RP, {$3}});
+                                $$ = NEW_NODE(xql::PathSeparator{*$2, {xq, rp}});
                                 delete $2;
                             }
         | OTAG xq CTAG      {
-                                auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$2}));
-                                $$ = NEW_NODE(xquery::lang::Tag(*$1, *$3, {xq}));
+                                auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$2}});
+                                $$ = NEW_NODE(xql::Tag{*$1, *$3, {xq}});
                                 delete $1;
                                 delete $3;
                             }
         | for let where
-          return            {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2, $3, $4}));   }
-        | for where return  {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2, $3}));   }
-        | for let return    {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2, $3}));   }
-        | for return        {   $$ = NEW_NODE(xquery::lang::FLWRExpression({$1, $2}));   }
+          return            {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, $3, $4}});   }
+        | for where return  {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, $3}});   }
+        | for let return    {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, $3}});   }
+        | for return        {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2}});   }
         | let xq %prec LET  {
-                                auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$2}));
-                                $$ = NEW_NODE(xquery::lang::LetExpression({$1, xq}));
+                                auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$2}});
+                                $$ = NEW_NODE(xql::LetExpression{{$1, xq}});
                             }
 ;
 
 fstuple : VAR IN xq
           %prec TUPLE       {
-                                auto var = NEW_NODE(xquery::lang::Variable(*$1));
-                                auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$3}));
-                                BUFFERIZE(NEW_NODE(xquery::lang::Tuple({var, xq})));
+                                auto var = NEW_NODE(xql::Variable{*$1});
+                                auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
+                                BUFFERIZE(NEW_NODE(xql::Tuple{{var, xq}}));
                                 delete $1;
                             }
         | fstuple ','
@@ -172,119 +174,119 @@ fstuple : VAR IN xq
 
 ltuple  : VAR AFFECT xq
           %prec TUPLE       {
-                                auto var = NEW_NODE(xquery::lang::Variable(*$1));
-                                auto xq = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$3}));
-                                BUFFERIZE(NEW_NODE(xquery::lang::Tuple({var, xq})));
+                                auto var = NEW_NODE(xql::Variable{*$1});
+                                auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
+                                BUFFERIZE(NEW_NODE(xql::Tuple{{var, xq}}));
                                 delete $1;
                             }
         | ltuple ',' ltuple {}
 ;
 
-for     : FOR fstuple       {   $$ = NEW_NODE(xquery::lang::ForClause(UNBUFFERIZE()));   }
+for     : FOR fstuple       {   $$ = NEW_NODE(xql::ForClause{UNBUFFERIZE()});   }
 ;
 
-let     : LET ltuple        {   $$ = NEW_NODE(xquery::lang::LetClause(UNBUFFERIZE()));   }
+let     : LET ltuple        {   $$ = NEW_NODE(xql::LetClause{UNBUFFERIZE()});   }
 ;
 
-where   : WHERE cond        {   $$ = NEW_NODE(xquery::lang::WhereClause({$2}));   }
+where   : WHERE cond        {   $$ = NEW_NODE(xql::WhereClause{{$2}});   }
 ;
 
-return  : RET xq            {   $$ = NEW_NODE(xquery::lang::ReturnClause({$2}));   }
+return  : RET xq            {   $$ = NEW_NODE(xql::ReturnClause{{$2}});   }
 ;
 
-some    : SOME fstuple      {   $$ = NEW_NODE(xquery::lang::SomeClause(UNBUFFERIZE()));   }
+some    : SOME fstuple      {   $$ = NEW_NODE(xql::SomeClause{UNBUFFERIZE()});   }
 ;
 
 cond    : xq EQUAL xq       {
-                                auto xq1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$1}));
-                                auto xq2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::XQ, {$3}));
-                                $$ = NEW_NODE(xquery::lang::Equality(*$2, {xq1, xq2}));
+                                auto xq1 = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$1}});
+                                auto xq2 = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
+                                $$ = NEW_NODE(xql::Equality{*$2, {xq1, xq2}});
                                 delete $2;
                             }
         | '(' cond ')'      {
-                                auto cond = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$2}));
-                                $$ = NEW_NODE(xquery::lang::Precedence({cond}));
+                                auto cond = NEW_NODE(xql::NonTerminalNode{xql::COND, {$2}});
+                                $$ = NEW_NODE(xql::Precedence{{cond}});
                             }
         | cond LJUNC
           cond              {
-                                auto cond1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$1}));
-                                auto cond2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$3}));
-                                $$ = NEW_NODE(xquery::lang::LogicOperator(*$2, {cond1, cond2}));
+                                auto cond1 = NEW_NODE(xql::NonTerminalNode{xql::COND, {$1}});
+                                auto cond2 = NEW_NODE(xql::NonTerminalNode{xql::COND, {$3}});
+                                $$ = NEW_NODE(xql::LogicOperator{*$2, {cond1, cond2}});
                                 delete $2;
                             }
         | LNEG cond         {
-                                auto cond = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$2}));
-                                $$ = NEW_NODE(xquery::lang::LogicOperator(*$1, {cond}));
+                                auto cond = NEW_NODE(xql::NonTerminalNode{xql::COND, {$2}});
+                                $$ = NEW_NODE(xql::LogicOperator{*$1, {cond}});
                                 delete $1;
                             }
-        | EMPTY '(' xq ')'  {   $$ = NEW_NODE(xquery::lang::Empty({$3}));   }
+        | EMPTY '(' xq ')'  {   $$ = NEW_NODE(xql::Empty{{$3}});   }
         | some SATISFY cond {
-                                auto cond = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::COND, {$3}));
+                                auto cond = NEW_NODE(xql::NonTerminalNode{xql::COND, {$3}});
                                 $1->AddEdge(cond);
                                 $$ = $1;
                             }
 ;
 
 ap      : DOC PSEP rp       {
-                                auto doc = NEW_NODE(xquery::lang::Document(*$1));
-                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
-                                $$ = NEW_NODE(xquery::lang::PathSeparator(*$2, {doc, rp}));
+                                auto doc = NEW_NODE(xql::Document{*$1});
+                                auto rp = NEW_NODE(xql::NonTerminalNode{xql::RP, {$3}});
+                                $$ = NEW_NODE(xql::PathSeparator{*$2, {doc, rp}});
                                 delete $1;
                                 delete $2;
                             }
 ;
 
 rp      : TAGNAME           {
-                                $$ = NEW_NODE(xquery::lang::TagName(*$1));
+                                $$ = NEW_NODE(xql::TagName{*$1});
                                 delete $1;
                             }
         | PGLOB             {
-                                $$ = NEW_NODE(xquery::lang::PathGlobbing(*$1));
+                                $$ = NEW_NODE(xql::PathGlobbing{*$1});
                                 delete $1;
                             }
-        | TEXT              {   $$ = NEW_NODE(xquery::lang::Text());   }
+        | TEXT              {   $$ = NEW_NODE(xql::Text{});   }
         | rp PSEP rp        {
-                                auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
-                                auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
-                                $$ = NEW_NODE(xquery::lang::PathSeparator(*$2, {rp1, rp2}));
+                                auto rp1 = NEW_NODE(xql::NonTerminalNode{xql::RP, {$1}});
+                                auto rp2 = NEW_NODE(xql::NonTerminalNode{xql::RP, {$3}});
+                                $$ = NEW_NODE(xql::PathSeparator{*$2, {rp1, rp2}});
                                 delete $2;
                             }
         | '(' rp ')'        {
-                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$2}));
-                                $$ = NEW_NODE(xquery::lang::Precedence({rp}));
+                                auto rp = NEW_NODE(xql::NonTerminalNode{xql::RP, {$2}});
+                                $$ = NEW_NODE(xql::Precedence{{rp}});
                             }
         | rp ',' rp         {
-                                auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
-                                auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
-                                $$ = NEW_NODE(xquery::lang::Concatenation({rp1, rp2}));
+                                auto rp1 = NEW_NODE(xql::NonTerminalNode{xql::RP, {$1}});
+                                auto rp2 = NEW_NODE(xql::NonTerminalNode{xql::RP, {$3}});
+                                $$ = NEW_NODE(xql::Concatenation{{rp1, rp2}});
                             }
         | rp '[' f ']'      {
-                                auto rp = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
-                                auto f = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$3}));
-                                $$ = NEW_NODE(xquery::lang::Filter({rp, f}));
+                                auto rp = NEW_NODE(xql::NonTerminalNode{xql::RP, {$1}});
+                                auto f = NEW_NODE(xql::NonTerminalNode{xql::F, {$3}});
+                                $$ = NEW_NODE(xql::Filter{{rp, f}});
                             }
 ;
 
-f       : rp %prec RP       {   $$ = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));   }
+f       : rp %prec RP       {   $$ = NEW_NODE(xql::NonTerminalNode{xql::RP, {$1}});   }
         | rp EQUAL rp       {
-                                auto rp1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$1}));
-                                auto rp2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::RP, {$3}));
-                                $$ = NEW_NODE(xquery::lang::Equality(*$2, {rp1, rp2}));
+                                auto rp1 = NEW_NODE(xql::NonTerminalNode{xql::RP, {$1}});
+                                auto rp2 = NEW_NODE(xql::NonTerminalNode{xql::RP, {$3}});
+                                $$ = NEW_NODE(xql::Equality{*$2, {rp1, rp2}});
                                 delete $2;
                             }
         | '(' f ')'         {
-                                auto f = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$2}));
-                                $$ = NEW_NODE(xquery::lang::Precedence({f}));
+                                auto f = NEW_NODE(xql::NonTerminalNode{xql::F, {$2}});
+                                $$ = NEW_NODE(xql::Precedence{{f}});
                             }
         | f LJUNC f         {
-                                auto f1 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$1}));
-                                auto f2 = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$3}));
-                                $$ = NEW_NODE(xquery::lang::LogicOperator(*$2, {f1, f2}));
+                                auto f1 = NEW_NODE(xql::NonTerminalNode{xql::F, {$1}});
+                                auto f2 = NEW_NODE(xql::NonTerminalNode{xql::F, {$3}});
+                                $$ = NEW_NODE(xql::LogicOperator{*$2, {f1, f2}});
                                 delete $2;
                             }
         | LNEG f            {
-                                auto f = NEW_NODE(xquery::lang::NonTerminalNode(xquery::lang::F, {$2}));
-                                $$ = NEW_NODE(xquery::lang::LogicOperator(*$1, {f}));
+                                auto f = NEW_NODE(xql::NonTerminalNode{xql::F, {$2}});
+                                $$ = NEW_NODE(xql::LogicOperator{*$1, {f}});
                                 delete $1;
                             }
 ;

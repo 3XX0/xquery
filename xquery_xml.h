@@ -4,7 +4,7 @@
 
 namespace xmlpp
 {
-typedef std::vector<const Element*>  Elements;
+using NodeList = Node::NodeList;
 }
 
 namespace xquery

@@ -4,14 +4,14 @@
 
     #include "xquery_lexer.h"
 
-    typedef xquery::Parser::token token;
+    using token = xquery::Parser::token;
 
     // Define yyterminate as a token instead of NULL
     #ifndef yyterminate
     #define yyterminate() return (token::END)
     #endif
 
-    #define STOKEN(...) (new std::string(__VA_ARGS__))
+    #define STOKEN(...) new std::string{__VA_ARGS__}
 
 %}
 

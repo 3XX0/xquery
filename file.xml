@@ -1,0 +1,10 @@
+<root>
+        <a>
+                <b>
+                        <c name="hello" />
+                        <c name="word" />
+                        <c name="foo" />
+                        <c name="bar" />
+                </b>
+        </a>
+</root>

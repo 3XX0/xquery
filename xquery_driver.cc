@@ -8,13 +8,13 @@ int xquery::Driver::Parse(const char* filename)
     assert(filename != nullptr);
     set_filename(filename);
 
-    std::ifstream fs(filename_);
+    std::ifstream fs{filename_};
 
     if ( !fs.good())
-        throw std::ios_base::failure("Could not open " + filename_);
+        throw std::ios_base::failure{"Could not open " + filename_};
 
-    lexer_ = std::unique_ptr<Lexer>(new Lexer(*this, fs));
-    parser_ = std::unique_ptr<Parser>(new Parser(*lexer_, *this));
+    lexer_ = std::unique_ptr<Lexer>{new Lexer{*this, fs}};
+    parser_ = std::unique_ptr<Parser>{new Parser{*lexer_, *this}};
 
     if ( parser_->parse()) {
         Error("Parsing failed");
@@ -22,5 +22,7 @@ int xquery::Driver::Parse(const char* filename)
     }
 
     ast_.PlotGraph();
+    ast_.Eval();
+
     return 0;
 }

@@ -4,6 +4,7 @@
 #include <memory>
 #include <iostream>
 
+#include "xquery_misc.h"
 #include "xquery_lexer.h"
 #include "xquery_parser.tab.hh"
 #include "xquery_ast.h"
@@ -11,13 +12,13 @@
 namespace xquery
 {
 
-class Driver
+class Driver : public NonCopyable, public NonMoveable
 {
     // Needed to access the AST from Bison
     friend class Parser;
 
     public:
-        Driver() : parser_(nullptr), lexer_(nullptr) {};
+        Driver() : parser_{nullptr}, lexer_{nullptr} {};
         virtual ~Driver() = default;
 
         int Parse(const char* filename);
@@ -30,6 +31,7 @@ class Driver
             std::cerr << loc << ": " << msg << std::endl;
         }
 
+    private:
         // XXX: Non const to allow location access from the Bison parser
         std::string& filename()
         {
@@ -40,7 +42,6 @@ class Driver
             filename_ = filename;
         }
 
-    private:
         Ast                     ast_;
         std::string             filename_ = "";
         std::unique_ptr<Parser> parser_;

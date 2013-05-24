@@ -4,36 +4,56 @@
 #include <vector>
 
 #include "xquery_xml.h"
+#include "xquery_misc.h"
 
 namespace xquery
 {
 
-class Node
+class Node : public NonCopyable, public NonMoveable
 {
-    public:
-        union EvalResult
-        {
-            EvalResult() = default;
-            EvalResult(xml::Elements&& elems) : elements(elems) {}
-            EvalResult(bool cond) : condition(cond) {}
-            ~EvalResult() = default;
+    friend class Ast;
 
-            xml::Elements elements;
-            bool          condition;
+    public:
+        using Edges = std::vector<const Node*>;
+        using const_iterator = Edges::const_iterator;
+
+        struct EvalResult : public NonCopyable
+        {
+            enum UnionType
+            {
+                NODES,
+                COND,
+                NONE
+            };
+
+            EvalResult() : type{NONE} {};
+            EvalResult(xml::NodeList nl) : nodes{std::move(nl)}, type{NODES} {}
+            EvalResult(bool cond) : condition{cond}, type{COND} {}
+            EvalResult(EvalResult&& res) : type{res.type}
+            {
+                if (type == NODES)
+                    new (&nodes) xml::NodeList{std::move(res.nodes)};
+                else if (type == COND)
+                    condition = res.condition;
+            }
+            ~EvalResult()
+            {
+                using NodeList = xml::NodeList;
+
+                if (type == NODES)
+                    nodes.~NodeList();
+            }
+
+            union {
+                xml::NodeList nodes;
+                bool          condition;
+            };
+            UnionType         type;
         };
 
-        typedef std::vector<const Node*>::const_iterator const_iterator;
+        virtual ~Node() = default;
 
-    protected:
-        typedef std::vector<const Node*> Edges;
-
-    public:
-        Node() = default;
-        Node(Edges&& edges) : edges_(edges) {}
-        virtual ~Node()
-        {
-            edges_.clear();
-        }
+        virtual EvalResult Eval(const EvalResult& res = {}) const = 0;
 
         const_iterator begin() const
         {
@@ -43,21 +63,32 @@ class Node
         {
             return std::end(edges_);
         }
-
-        virtual EvalResult Eval(const EvalResult& res) const = 0;
         void AddEdge(const Node* node) const
         {
             edges_.push_back(node);
-        }
-
-        void set_label(const std::string& label)
-        {
-            label_ = label;
         }
         const std::string& label() const
         {
             return label_;
         }
+
+    protected:
+        Node() = default;
+        Node(Edges&& edges) : edges_{std::move(edges)} {}
+
+        void set_label(const std::string& label)
+        {
+            label_ = label;
+        }
+
+        mutable Edges edges_;
+        std::string   label_;
+        size_t        id_ = 0;
+
+    private:
+        /*
+         * Ast specific
+         */
         void set_id(size_t id)
         {
             id_ = id;
@@ -66,29 +97,29 @@ class Node
         {
             return id_;
         }
-
-    protected:
-        mutable Edges edges_;
-        std::string   label_;
-        size_t        id_ = 0;
 };
 
-class Ast
+class Ast : public NonCopyable, public NonMoveable
 {
-    typedef std::unique_ptr<const Node> NodeUPtr;
-    typedef std::vector<const Node*>    Edges;
+    friend class Parser;
+
+    using NodeUPtr = std::unique_ptr<const Node>;
 
     public:
         Ast() = default;
-        ~Ast()
-        {
-            nodes_.clear();
-        }
+        ~Ast() = default;
 
+        void PlotGraph() const;
+        void Eval() const;
+
+    private:
+        /*
+         * Parser specific
+         */
         const Node* AddNode(Node* node)
         {
             node->set_id(nodes_.size());
-            nodes_.push_back(NodeUPtr(node));
+            nodes_.push_back(NodeUPtr{node});
             return node;
         }
         // Helpers to populate the edges of a node using a recursion rule
@@ -96,26 +127,19 @@ class Ast
         {
             edges_buf_.push_back(node);
         }
-        Edges UnbufferizeEdges()
+        Node::Edges UnbufferizeEdges()
         {
             auto edges = edges_buf_;
             edges_buf_.clear();
             return edges;
         }
-        void PlotGraph() const;
-
         void set_root(const Node* node)
         {
             root_ = node;
         }
-        const Node* root() const
-        {
-            return root_;
-        }
 
-    private:
         std::vector<NodeUPtr> nodes_;
-        Edges                 edges_buf_;
+        Node::Edges           edges_buf_;
         const Node*           root_ = nullptr;
 };
 
