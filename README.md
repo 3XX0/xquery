@@ -6,6 +6,7 @@ Dependencies
 - [optional] boost graph library + graphviz
 - bison >= 2.5
 - flex
+- libxmlpp
 - C++11 compiler support
 
 Build

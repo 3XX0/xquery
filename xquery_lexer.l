@@ -125,7 +125,7 @@ CSTRING         \"[^\"]*\"
                         yylloc_->step();
                     }
 .                   {
-                        driver_.Error(*yylloc_, "invalid character");
+                        process_.Error(*yylloc_, "invalid character");
                         return 1;
                     }
 

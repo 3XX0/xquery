@@ -53,7 +53,8 @@ class Node : public NonCopyable, public NonMoveable
 
         virtual ~Node() = default;
 
-        virtual EvalResult Eval(const EvalResult& res = {}) const = 0;
+        // Throws `std::runtime_error'
+        virtual EvalResult Eval(EvalResult&& res = {}) const = 0;
 
         const_iterator begin() const
         {
@@ -109,8 +110,8 @@ class Ast : public NonCopyable, public NonMoveable
         Ast() = default;
         ~Ast() = default;
 
-        void PlotGraph() const;
-        void Eval() const;
+        void PlotGraph() const; // Throws `std::ios_base'
+        void Eval() const;      // Throws `std::runtime_error'
 
     private:
         /*

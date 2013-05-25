@@ -12,16 +12,16 @@
 namespace xquery
 {
 
-class Driver : public NonCopyable, public NonMoveable
+class Processor : public NonCopyable, public NonMoveable
 {
     // Needed to access the AST from Bison
     friend class Parser;
 
     public:
-        Driver() : parser_{nullptr}, lexer_{nullptr} {};
-        virtual ~Driver() = default;
+        Processor() : parser_{nullptr}, lexer_{nullptr} {};
+        virtual ~Processor() = default;
 
-        int Parse(const char* filename);
+        int Run(const char* filename);
         void Error(const std::string& msg) const
         {
             std::cerr << msg << std::endl;

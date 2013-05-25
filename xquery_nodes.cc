@@ -8,15 +8,16 @@
 namespace xquery { namespace lang
 {
 
-Node::EvalResult NonTerminalNode::Eval(const EvalResult& res) const
+Node::EvalResult NonTerminalNode::Eval(EvalResult&& res) const
 {
-    return edges_[FIRST]->Eval(res);
+    return edges_[FIRST]->Eval(std::move(res));
 }
 
-Node::EvalResult TagName::Eval(const EvalResult& res) const
+Node::EvalResult TagName::Eval(EvalResult&& res) const
 {
     xml::NodeList children, ret_nodes;
 
+    assert(res.type == EvalResult::NODES);
     for (auto node : res.nodes) {
         children = node->get_children(tagname_);
         ret_nodes.splice(std::end(ret_nodes), children);
@@ -24,9 +25,26 @@ Node::EvalResult TagName::Eval(const EvalResult& res) const
     return ret_nodes;
 }
 
-Node::EvalResult Text::Eval(const EvalResult& res) const {}
+Node::EvalResult Text::Eval(EvalResult&& res) const
+{
+    xml::NodeList ret_nodes;
+    xml::Element* elem;
 
-Node::EvalResult Document::Eval(const EvalResult& res) const
+    assert(res.type == EvalResult::NODES);
+    for (auto node : res.nodes) {
+        elem = dynamic_cast<xml::Element*>(node);
+        if (elem == nullptr)
+            throw std::runtime_error(node->get_name() +
+              " is not a valid text node");
+        else {
+            auto n = static_cast<xml::Node*>(elem->get_child_text());
+            if (n) ret_nodes.push_back(n);
+        }
+    }
+    return ret_nodes;
+}
+
+Node::EvalResult Document::Eval(EvalResult&& res) const
 {
     xml::NodeList ret_node;
 
@@ -39,43 +57,64 @@ Node::EvalResult Document::Eval(const EvalResult& res) const
     return ret_node;
 }
 
-Node::EvalResult PathSeparator::Eval(const EvalResult& res) const
+Node::EvalResult PathSeparator::Eval(EvalResult&& res) const
 {
     xml::NodeList ret_nodes;
     xml::NodeSet  children;
 
-    const EvalResult left_res = edges_[LEFT]->Eval(res);
+    auto left_res = edges_[LEFT]->Eval(std::move(res));
+    assert(left_res.type == EvalResult::NODES);
 
-    if (sep_ == DESC_OR_SELF)
-    {
-        assert(left_res.type == EvalResult::NODES);
+    // TODO unique filtering
+    if (sep_ == DESC_OR_SELF) {
         for (auto node : left_res.nodes) {
             children = node->find("//*");
             ret_nodes.insert(std::end(ret_nodes), std::begin(children), std::end(children));
         }
         return edges_[RIGHT]->Eval(ret_nodes);
     }
-    else
-        return edges_[RIGHT]->Eval(left_res);
+    else if (sep_ == DESC)
+        return edges_[RIGHT]->Eval(std::move(left_res));
 }
 
-Node::EvalResult PathGlobbing::Eval(const EvalResult& res) const {}
-Node::EvalResult Precedence::Eval(const EvalResult& res) const {}
-Node::EvalResult Concatenation::Eval(const EvalResult& res) const {}
-Node::EvalResult Filter::Eval(const EvalResult& res) const {}
-Node::EvalResult Equality::Eval(const EvalResult& res) const {}
-Node::EvalResult LogicOperator::Eval(const EvalResult& res) const {}
-Node::EvalResult Variable::Eval(const EvalResult& res) const {}
-Node::EvalResult ConstantString::Eval(const EvalResult& res) const {}
-Node::EvalResult Tag::Eval(const EvalResult& res) const {}
-Node::EvalResult LetClause::Eval(const EvalResult& res) const {}
-Node::EvalResult WhereClause::Eval(const EvalResult& res) const {}
-Node::EvalResult ForClause::Eval(const EvalResult& res) const {}
-Node::EvalResult ReturnClause::Eval(const EvalResult& res) const {}
-Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const {}
-Node::EvalResult LetExpression::Eval(const EvalResult& res) const {}
-Node::EvalResult Tuple::Eval(const EvalResult& res) const {}
-Node::EvalResult SomeClause::Eval(const EvalResult& res) const {}
-Node::EvalResult Empty::Eval(const EvalResult& res) const {}
+Node::EvalResult PathGlobbing::Eval(EvalResult&& res) const
+{
+    xml::NodeList children, ret_nodes;
+
+    assert(res.type == EvalResult::NODES);
+    if (glob_ == SELF)
+        return std::move(res);
+    else if (glob_ == WILDCARD)
+        for (auto node : res.nodes) {
+            children = node->get_children();
+            ret_nodes.splice(std::end(ret_nodes), children);
+        }
+    else if (glob_ == PARENT)
+        for (auto node : res.nodes)
+            ret_nodes.push_back(node->get_parent());
+    return ret_nodes;
+}
+
+Node::EvalResult Precedence::Eval(EvalResult&& res) const
+{
+    return edges_[FIRST]->Eval(std::move(res));
+}
+
+Node::EvalResult Concatenation::Eval(EvalResult&& res) const {}
+Node::EvalResult Filter::Eval(EvalResult&& res) const {}
+Node::EvalResult Equality::Eval(EvalResult&& res) const {}
+Node::EvalResult LogicOperator::Eval(EvalResult&& res) const {}
+Node::EvalResult Variable::Eval(EvalResult&& res) const {}
+Node::EvalResult ConstantString::Eval(EvalResult&& res) const {}
+Node::EvalResult Tag::Eval(EvalResult&& res) const {}
+Node::EvalResult LetClause::Eval(EvalResult&& res) const {}
+Node::EvalResult WhereClause::Eval(EvalResult&& res) const {}
+Node::EvalResult ForClause::Eval(EvalResult&& res) const {}
+Node::EvalResult ReturnClause::Eval(EvalResult&& res) const {}
+Node::EvalResult FLWRExpression::Eval(EvalResult&& res) const {}
+Node::EvalResult LetExpression::Eval(EvalResult&& res) const {}
+Node::EvalResult Tuple::Eval(EvalResult&& res) const {}
+Node::EvalResult SomeClause::Eval(EvalResult&& res) const {}
+Node::EvalResult Empty::Eval(EvalResult&& res) const {}
 
 }}

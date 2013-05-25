@@ -10,23 +10,23 @@
 {
     namespace xquery
     {
-        class Driver;
+        class Processor;
         class Lexer;
         class Node;
     }
 }
 
 %lex-param   { Lexer &lexer }
-%lex-param   { Driver &driver }
+%lex-param   { Processor &process }
 
 %parse-param { Lexer &lexer }
-%parse-param { Driver &driver }
+%parse-param { Processor &process }
 
 %locations
 %initial-action
 {
     /* Initialize the initial location */
-    @$.begin.filename = @$.end.filename = &driver.filename();
+    @$.begin.filename = @$.end.filename = &process.filename();
 }
 
 %code
@@ -35,18 +35,18 @@
     #include <cstdlib>
     #include <fstream>
 
-    #include "xquery_driver.h"
+    #include "xquery_processor.h"
     #include "xquery_nodes.h"
 
     static int yylex(xquery::Parser::semantic_type *yylval,
                      xquery::Parser::location_type *yylloc,
                      xquery::Lexer &lexer,
-                     xquery::Driver &driver);
+                     xquery::Processor &process);
 
-    #define NEW_NODE(...) driver.ast_.AddNode(new __VA_ARGS__)
-    #define SET_ROOT(x) driver.ast_.set_root(x)
-    #define BUFFERIZE(x) driver.ast_.BufferizeEdge(x)
-    #define UNBUFFERIZE() driver.ast_.UnbufferizeEdges()
+    #define NEW_NODE(...) process.ast_.AddNode(new __VA_ARGS__)
+    #define SET_ROOT(x) process.ast_.set_root(x)
+    #define BUFFERIZE(x) process.ast_.BufferizeEdge(x)
+    #define UNBUFFERIZE() process.ast_.UnbufferizeEdges()
 
     namespace xql = xquery::lang;
 }
@@ -297,7 +297,7 @@ f       : rp %prec RP       {   $$ = NEW_NODE(xql::NonTerminalNode{xql::RP, {$1}
 void xquery::Parser::error(const xquery::Parser::location_type& loc,
                            const std::string& msg)
 {
-    driver.Error(loc, msg);
+    process.Error(loc, msg);
 }
 
 #include "xquery_lexer.h"
@@ -306,7 +306,7 @@ void xquery::Parser::error(const xquery::Parser::location_type& loc,
 static int yylex(xquery::Parser::semantic_type* yylval,
                  xquery::Parser::location_type *yylloc,
                  xquery::Lexer& lexer,
-                 xquery::Driver&)
+                 xquery::Processor&)
 {
     return lexer.Yylex(yylval, yylloc);
 }

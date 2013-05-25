@@ -18,4 +18,5 @@ struct NonMoveable
     NonMoveable& operator=(NonMoveable&&) = delete;
 };
 
-
+std::string operator"" _red(const char* str, size_t n);
+std::string operator"" _yellow(const char* str, size_t n);

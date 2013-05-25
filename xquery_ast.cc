@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "xquery_misc.h"
 #include "xquery_ast.h"
 
 #ifdef USE_BOOST_GRAPHVIZ
@@ -62,8 +63,8 @@ void Ast::PlotGraph() const
     boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
     fs.close();
 #else
-    std::cerr << "Graphiz plotting is not supported. " <<
-      "Try compiling with USE_BOOST_GRAPHVIZ=true" << std::endl;
+    std::cerr << "Graphiz plotting is not supported. "_yellow <<
+      "Try compiling with USE_BOOST_GRAPHVIZ=true"_yellow << std::endl;
 #endif
 }
 
@@ -73,10 +74,15 @@ void Ast::Eval() const
 
     assert(output.type == Node::EvalResult::NODES);
     for (const auto node : output.nodes) {
-        std::cout << "node: " << node->get_name();
-        const xml::Element* elem = dynamic_cast<const xml::Element*>(node);
-        if (elem != nullptr)
-            std::cout << " attr: " << elem->get_attribute("name")->get_value();
+        std::cout << "Name: \"" << node->get_name() << "\"";
+
+        // Element attributes
+        auto elem = dynamic_cast<const xml::Element*>(node);
+        if (elem) std::cout << ", Attr: \"" << elem->get_attribute("attr")->get_value() << "\"";
+        // Text
+        auto text = dynamic_cast<const xml::TextNode*>(node);
+        if (text) std::cout << ", Text: \"" << text->get_content() << "\"";
+
         std::cout << std::endl;
     }
 }

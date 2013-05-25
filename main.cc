@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "xquery_driver.h"
+#include "xquery_processor.h"
 
 int main(const int argc, const char* argv[])
 {
@@ -9,17 +9,7 @@ int main(const int argc, const char* argv[])
         return 1;
     }
 
-    try {
-        xquery::Driver driver;
+    xquery::Processor process;
 
-        return driver.Parse(argv[1]);
-    }
-    catch (const std::exception &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
-    catch (...) {
-        std::cerr << "Abort: Unhandled exception" << std::endl;
-        return 1;
-    }
+    return process.Run(argv[1]);
 }

@@ -14,17 +14,19 @@ TARGET = xquery
 DOT_AST = ast.dot
 
 SRCS = main.cc \
-       xquery_driver.cc \
+       xquery_processor.cc \
        xquery_nodes.cc \
        xquery_ast.cc \
+       xquery_misc.cc \
        xquery_parser.yy \
        xquery_lexer.l \
 
 OBJS = xquery_parser.o \
        xquery_lexer.o \
-       xquery_driver.o \
+       xquery_processor.o \
        xquery_nodes.o \
        xquery_ast.o \
+       xquery_misc.o \
        main.o \
 
 CLEANLIST = xquery_parser.tab.cc \
