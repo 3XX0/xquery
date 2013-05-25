@@ -100,10 +100,24 @@ Node::EvalResult Precedence::Eval(EvalResult&& res) const
     return edges_[FIRST]->Eval(std::move(res));
 }
 
-Node::EvalResult Concatenation::Eval(EvalResult&& res) const {}
+Node::EvalResult Concatenation::Eval(EvalResult&& res) const
+{
+    xml::NodeList ret_nodes;
+
+    auto left_res = edges_[LEFT]->Eval(std::move(res));
+    auto right_res = edges_[RIGHT]->Eval(std::move(res));
+    assert(left_res.type == EvalResult::NODES);
+    assert(right_res.type == EvalResult::NODES);
+
+    ret_nodes.splice(std::end(ret_nodes), left_res.nodes);
+    ret_nodes.splice(std::end(ret_nodes), right_res.nodes);
+    return ret_nodes;
+}
+
 Node::EvalResult Filter::Eval(EvalResult&& res) const {}
 Node::EvalResult Equality::Eval(EvalResult&& res) const {}
 Node::EvalResult LogicOperator::Eval(EvalResult&& res) const {}
+
 Node::EvalResult Variable::Eval(EvalResult&& res) const {}
 Node::EvalResult ConstantString::Eval(EvalResult&& res) const {}
 Node::EvalResult Tag::Eval(EvalResult&& res) const {}

@@ -1,1 +1,1 @@
-doc(file.xml)//c/text()
+doc(file.xml)//(c/text(),b)

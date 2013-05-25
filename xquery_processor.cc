@@ -32,9 +32,10 @@ int xquery::Processor::Run(const char* filename)
     }
     catch (const std::runtime_error& e) {
         Error(e.what());
-        Error("Execution failed"_red);
+        Error("Evaluation failed"_red);
         return 1;
     }
 
+    std::cout << "Evaluation done"_green << std::endl;
     return 0;
 }

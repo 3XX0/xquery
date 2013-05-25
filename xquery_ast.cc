@@ -62,6 +62,7 @@ void Ast::PlotGraph() const
         throw std::ios_base::failure{"Could not open " + filename};
     boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
     fs.close();
+    std::cout << "AST generated successfully"_green << std::endl;
 #else
     std::cerr << "Graphiz plotting is not supported. "_yellow <<
       "Try compiling with USE_BOOST_GRAPHVIZ=true"_yellow << std::endl;
@@ -76,9 +77,12 @@ void Ast::Eval() const
     for (const auto node : output.nodes) {
         std::cout << "Name: \"" << node->get_name() << "\"";
 
-        // Element attributes
+        // Element attribute
         auto elem = dynamic_cast<const xml::Element*>(node);
-        if (elem) std::cout << ", Attr: \"" << elem->get_attribute("attr")->get_value() << "\"";
+        if (elem) {
+            auto attr = elem->get_attribute("attr");
+            if (attr) std::cout << ", Attr: \"" << attr->get_value() << "\"";
+        }
         // Text
         auto text = dynamic_cast<const xml::TextNode*>(node);
         if (text) std::cout << ", Text: \"" << text->get_content() << "\"";

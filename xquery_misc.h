@@ -20,3 +20,4 @@ struct NonMoveable
 
 std::string operator"" _red(const char* str, size_t n);
 std::string operator"" _yellow(const char* str, size_t n);
+std::string operator"" _green(const char* str, size_t n);

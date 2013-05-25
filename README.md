@@ -1,6 +1,8 @@
 xquery
 ======
 
+Simplified processor for XQuery following the specifications of `xpath-semantics.pdf'
+
 Dependencies
 ------------
 - [optional] boost graph library + graphviz

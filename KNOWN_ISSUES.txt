@@ -1,0 +1,5 @@
+The parser can't differenciate between the following ambiguous grammar rules:
+1. AP
+2. XQ,XQ
+3. XQ/RP
+The use of parentheses is required to handle such cases.
