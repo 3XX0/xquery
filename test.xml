@@ -1,1 +1,1 @@
-doc(file.xml)//(c/text(),b)
+doc(file.xml)//a[b/c eq d/c and not b/c is d/c]

@@ -24,10 +24,15 @@ int xquery::Processor::Run(const char* filename)
         }
 
         ast_.PlotGraph(); // Throws
-        ast_.Eval();      // Throws
+        ast_.Evaluate();  // Throws
     }
     catch (const std::ios_base::failure& e) {
         Error(e.what());
+        return 1;
+    }
+    catch (const xml::validity_error& e) {
+        Error(e.what());
+        Error("Input invalid"_red);
         return 1;
     }
     catch (const std::runtime_error& e) {

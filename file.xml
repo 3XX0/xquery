@@ -6,5 +6,11 @@
                         <c attr="foo" />
                         <c attr="bar" />
                 </b>
+                <d>
+                        <c attr="hello" />
+                        <c attr="word">dead beef</c>
+                        <c attr="foo" />
+                        <c attr="bar" />
+                </d>
         </a>
 </root>

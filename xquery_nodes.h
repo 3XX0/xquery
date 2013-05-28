@@ -30,7 +30,7 @@ class NonTerminalNode : public Node
         }
         ~NonTerminalNode() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<NTLabel, std::string, std::hash<int>> kMap_= {
@@ -52,7 +52,7 @@ class TagName : public Node
         }
         ~TagName() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         std::string tagname_;
@@ -67,7 +67,7 @@ class Text : public Node
         }
         ~Text() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Document : public Node
@@ -79,7 +79,7 @@ class Document : public Node
         }
         ~Document() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         mutable xml::DomParser parser_;
@@ -104,7 +104,7 @@ class PathSeparator : public Node
         }
         ~PathSeparator() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<std::string, SepType> kMap_= {
@@ -131,7 +131,7 @@ class PathGlobbing : public Node
         }
         ~PathGlobbing() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<std::string, GlobType> kMap_= {
@@ -152,7 +152,7 @@ class Precedence : public Node
         }
         ~Precedence() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Concatenation : public Node
@@ -165,7 +165,7 @@ class Concatenation : public Node
         }
         ~Concatenation() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Filter : public Node
@@ -178,7 +178,7 @@ class Filter : public Node
         }
         ~Filter() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Equality : public Node
@@ -198,9 +198,11 @@ class Equality : public Node
         }
         ~Equality() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
+        bool HasValueEquality(const xml::Node* n1, const xml::Node* n2) const;
+
         const std::unordered_map<std::string, EqType> kMap_= {
             {"=", VALUE},
             {"eq", VALUE},
@@ -228,7 +230,7 @@ class LogicOperator : public Node
         }
         ~LogicOperator() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         const std::unordered_map<std::string, OpType> kMap_= {
@@ -248,7 +250,7 @@ class Variable : public Node
         }
         ~Variable() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         std::string varname_;
@@ -263,7 +265,7 @@ class ConstantString : public Node
         }
         ~ConstantString() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         std::string cstring_;
@@ -281,7 +283,7 @@ class Tag : public Node
         }
         ~Tag() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 
     private:
         std::string tagname_;
@@ -297,7 +299,7 @@ class LetClause : public Node
         }
         ~LetClause() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class WhereClause : public Node
@@ -310,7 +312,7 @@ class WhereClause : public Node
         }
         ~WhereClause() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class ForClause : public Node
@@ -323,7 +325,7 @@ class ForClause : public Node
         }
         ~ForClause() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class ReturnClause : public Node
@@ -336,7 +338,7 @@ class ReturnClause : public Node
         }
         ~ReturnClause() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class FLWRExpression : public Node
@@ -349,7 +351,7 @@ class FLWRExpression : public Node
         }
         ~FLWRExpression() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class LetExpression : public Node
@@ -362,7 +364,7 @@ class LetExpression : public Node
         }
         ~LetExpression() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Tuple : public Node
@@ -375,7 +377,7 @@ class Tuple : public Node
         }
         ~Tuple() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class SomeClause : public Node
@@ -388,7 +390,7 @@ class SomeClause : public Node
         }
         ~SomeClause() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 class Empty : public Node
@@ -401,7 +403,7 @@ class Empty : public Node
         }
         ~Empty() = default;
 
-        EvalResult Eval(EvalResult&& res) const override;
+        EvalResult Eval(const EvalResult& res) const override;
 };
 
 }}

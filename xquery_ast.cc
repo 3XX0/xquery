@@ -69,7 +69,7 @@ void Ast::PlotGraph() const
 #endif
 }
 
-void Ast::Eval() const
+void Ast::Evaluate() const
 {
     auto output = root_->Eval();
 

@@ -9,6 +9,8 @@
 namespace xquery
 {
 
+class Ast;
+
 class Node : public NonCopyable, public NonMoveable
 {
     friend class Ast;
@@ -17,7 +19,7 @@ class Node : public NonCopyable, public NonMoveable
         using Edges = std::vector<const Node*>;
         using const_iterator = Edges::const_iterator;
 
-        struct EvalResult : public NonCopyable
+        struct EvalResult
         {
             enum UnionType
             {
@@ -33,6 +35,27 @@ class Node : public NonCopyable, public NonMoveable
             {
                 if (type == NODES)
                     new (&nodes) xml::NodeList{std::move(res.nodes)};
+                else if (type == COND)
+                    condition = res.condition;
+            }
+            EvalResult& operator=(EvalResult&& res)
+            {
+                using NodeList = xml::NodeList;
+                if (&res != this) {
+                    if (type == NODES)
+                        nodes.~NodeList();
+                    if (res.type == NODES)
+                        new (&nodes) xml::NodeList{std::move(res.nodes)};
+                    else if (res.type == COND)
+                        condition = res.condition;
+                    type = res.type;
+                }
+                return *this;
+            }
+            EvalResult(const EvalResult& res) : type{res.type}
+            {
+                if (type == NODES)
+                    new (&nodes) xml::NodeList{res.nodes};
                 else if (type == COND)
                     condition = res.condition;
             }
@@ -53,8 +76,8 @@ class Node : public NonCopyable, public NonMoveable
 
         virtual ~Node() = default;
 
-        // Throws `std::runtime_error'
-        virtual EvalResult Eval(EvalResult&& res = {}) const = 0;
+        // Throws `std::runtime_error' or `xml::validity_error'
+        virtual EvalResult Eval(const EvalResult& res = {}) const = 0;
 
         const_iterator begin() const
         {
@@ -75,7 +98,7 @@ class Node : public NonCopyable, public NonMoveable
 
     protected:
         Node() = default;
-        Node(Edges&& edges) : edges_{std::move(edges)} {}
+        Node(Edges&& edges) : edges_{std::move(edges)}, ast_{nullptr} {}
 
         void set_label(const std::string& label)
         {
@@ -85,11 +108,16 @@ class Node : public NonCopyable, public NonMoveable
         mutable Edges edges_;
         std::string   label_;
         size_t        id_ = 0;
+        Ast*          ast_;
 
     private:
         /*
          * Ast specific
          */
+        void set_ast(Ast* ast)
+        {
+            ast_ = ast;
+        }
         void set_id(size_t id)
         {
             id_ = id;
@@ -111,7 +139,7 @@ class Ast : public NonCopyable, public NonMoveable
         ~Ast() = default;
 
         void PlotGraph() const; // Throws `std::ios_base'
-        void Eval() const;      // Throws `std::runtime_error'
+        void Evaluate() const;  // Throws `std::runtime_error'
 
     private:
         /*
@@ -120,6 +148,7 @@ class Ast : public NonCopyable, public NonMoveable
         const Node* AddNode(Node* node)
         {
             node->set_id(nodes_.size());
+            node->set_ast(this);
             nodes_.push_back(NodeUPtr{node});
             return node;
         }
