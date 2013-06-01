@@ -19,7 +19,7 @@ class Lexer : public yyFlexLexer, public NonCopyable, public NonMoveable
     public:
         Lexer(const Processor& process, std::istream& input)
           : yyFlexLexer{&input},
-            process_{process},
+            process_(process), // XXX: g++ issue
             yylval_{nullptr},
             yylloc_{nullptr} {}
         ~Lexer() = default;

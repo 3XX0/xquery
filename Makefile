@@ -2,7 +2,7 @@ XMLPP_INC ?= `pkg-config --cflags libxml++-2.6`
 XMLPP_LIB ?= `pkg-config --libs libxml++-2.6`
 
 CXX = clang++
-CXXFLAGS = -g -std=c++11 $(XMLPP_INC)
+CXXFLAGS = -O3 -W -Wall -Wextra -std=c++11 $(XMLPP_INC)
 LDFLAGS = -lfl $(XMLPP_LIB)
 
 ifdef USE_BOOST_GRAPHVIZ
@@ -17,6 +17,7 @@ SRCS = main.cc \
        xquery_processor.cc \
        xquery_nodes.cc \
        xquery_ast.cc \
+       xquery_ast_utils.cc \
        xquery_misc.cc \
        xquery_parser.yy \
        xquery_lexer.l \
@@ -26,6 +27,7 @@ OBJS = xquery_parser.o \
        xquery_processor.o \
        xquery_nodes.o \
        xquery_ast.o \
+       xquery_ast_utils.o \
        xquery_misc.o \
        main.o \
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "xquery_ast.h"
+#include "xquery_ast_utils.h"
 
 namespace xquery { namespace lang
 {
@@ -25,7 +26,7 @@ class NonTerminalNode : public Node
           : Node{std::move(edges)},
             label_{label}
         {
-            set_label("NonTerminalNode `" + kMap_.at(label) + "'");
+            set_label("NonTerminalNode `" + kMap_.at(label_) + "'");
             assert(edges_.size() == 1);
         }
         ~NonTerminalNode() = default;
@@ -315,7 +316,7 @@ class WhereClause : public Node
         EvalResult Eval(const EvalResult& res) const override;
 };
 
-class ForClause : public Node
+class ForClause : public Node, public ContextIterator
 {
     public:
         ForClause(Edges&& edges) : Node{std::move(edges)}
@@ -325,7 +326,18 @@ class ForClause : public Node
         }
         ~ForClause() = default;
 
+        ctx_iterator ctx_begin() const
+        {
+            return ContextIterator::begin(context_);
+        }
+        ctx_iterator ctx_end() const
+        {
+            return ContextIterator::end(context_);
+        }
         EvalResult Eval(const EvalResult& res) const override;
+
+    private:
+        mutable Ast::Context context_;
 };
 
 class ReturnClause : public Node
@@ -367,17 +379,22 @@ class LetExpression : public Node
         EvalResult Eval(const EvalResult& res) const override;
 };
 
-class Tuple : public Node
+class VariableDef : public Node
 {
     public:
-        Tuple(Edges&& edges) : Node{std::move(edges)}
+        VariableDef(const std::string& varname, Edges&& edges)
+          : Node{std::move(edges)},
+            varname_{varname}
         {
-            set_label("Tuple");
-            assert(edges_.size() == 2);
+            set_label("VariableDef");
+            assert(edges_.size() == 1);
         }
-        ~Tuple() = default;
+        ~VariableDef() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
+
+    private:
+        std::string varname_;
 };
 
 class SomeClause : public Node

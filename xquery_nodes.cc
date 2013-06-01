@@ -4,10 +4,17 @@
 
 #define FIRST 0
 #define LEFT  0
+#define FOR   0
+
 #define RIGHT 1
+#define LET   1
+
+#define WHERE 2
+#define RET   3
 
 #define HAS_NODES(x) (x.type == EvalResult::NODES)
 #define HAS_COND(x) (x.type == EvalResult::COND)
+#define HAS_CTX_IT(x) (x.type == EvalResult::CTX_IT)
 
 namespace xquery { namespace lang
 {
@@ -48,7 +55,7 @@ Node::EvalResult Text::Eval(const EvalResult& res) const
     return ret_nodes;
 }
 
-Node::EvalResult Document::Eval(const EvalResult& res) const
+Node::EvalResult Document::Eval(const EvalResult&) const
 {
     //parser_.set_validate();
     parser_.parse_file(name_);
@@ -186,7 +193,7 @@ Node::EvalResult Equality::Eval(const EvalResult& res) const
     if (eq_ == VALUE)
         return std::all_of(std::begin(left_res.nodes), std::end(left_res.nodes),
           [this, &it](const xml::Node* node){ return HasValueEquality(node, *it++); });
-    else if (eq_ == REF)
+    else // REF
         return std::all_of(std::begin(left_res.nodes), std::end(left_res.nodes),
           [&it](const xml::Node* node){ return node == *it++; });
 }
@@ -225,23 +232,108 @@ Node::EvalResult LogicOperator::Eval(const EvalResult& res) const
             return (op_ == AND) ? (!left_res.nodes.empty() && right_res.condition)
                                 : (!left_res.nodes.empty() || right_res.condition);
     }
-    else if (op_ == NOT) {
+    else { // NOT
         auto first_res = edges_[FIRST]->Eval(res);
         return HAS_NODES(first_res) ? first_res.nodes.empty() : !first_res.condition;
     }
+    return {}; // Should not return here
 }
 
-Node::EvalResult Variable::Eval(const EvalResult& res) const {}
-Node::EvalResult ConstantString::Eval(const EvalResult& res) const {}
+Node::EvalResult Variable::Eval(const EvalResult&) const
+{
+    return ast_->CtxFindVarDef(varname_);
+}
+
+Node::EvalResult ConstantString::Eval(const EvalResult&) const
+{
+    xml::TextNode* cstring = new xml::TextNode{nullptr}; // TODO Memory leak
+
+    cstring->set_content(cstring_);
+    return xml::NodeList{cstring};
+}
+
 Node::EvalResult Tag::Eval(const EvalResult& res) const {}
-Node::EvalResult LetClause::Eval(const EvalResult& res) const {}
-Node::EvalResult WhereClause::Eval(const EvalResult& res) const {}
-Node::EvalResult ForClause::Eval(const EvalResult& res) const {}
-Node::EvalResult ReturnClause::Eval(const EvalResult& res) const {}
-Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const {}
-Node::EvalResult LetExpression::Eval(const EvalResult& res) const {}
-Node::EvalResult Tuple::Eval(const EvalResult& res) const {}
+
+Node::EvalResult LetClause::Eval(const EvalResult& res) const
+{
+    for (auto edge : edges_)
+        edge->Eval(res);
+    return {};
+}
+
+Node::EvalResult WhereClause::Eval(const EvalResult& res) const // TODO
+{
+    return edges_[FIRST]->Eval(res);
+}
+
+Node::EvalResult ForClause::Eval(const EvalResult& res) const
+{
+    ast_->CtxMarkScope();
+    for (auto edge : edges_)
+        edge->Eval(res);
+    context_ = ast_->CtxUnmarkScope();
+    return ctx_begin();
+}
+
+Node::EvalResult ReturnClause::Eval(const EvalResult& res) const
+{
+    return edges_[FIRST]->Eval(res);
+}
+
+Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const 
+{
+    xml::NodeList ret_nodes;
+    EvalResult    ret_res;
+
+    auto for_clause = static_cast<const ForClause*>(edges_[FOR]);
+    auto for_res = for_clause->Eval(res);
+    assert(HAS_CTX_IT(for_res));
+
+    while (for_res.iterator != for_clause->ctx_end()) {
+        ast_->CtxMarkScope();
+        for (auto vdef : *for_res.iterator)
+            ast_->CtxAddVarDef(vdef.first, {vdef.second});
+        if (edges_[LET] != nullptr)
+            edges_[LET]->Eval(res);
+        if (edges_[WHERE] != nullptr) {
+            auto where_res = edges_[WHERE]->Eval(res);
+            assert(HAS_COND(where_res));
+            if (where_res.condition == false)
+                goto again;
+        }
+        ret_res = edges_[RET]->Eval(res);
+        assert(HAS_NODES(ret_res));
+        ret_nodes.splice(std::end(ret_nodes), ret_res.nodes);
+again:
+        ast_->CtxUnmarkScope();
+    }
+    return ret_nodes;
+}
+
+Node::EvalResult LetExpression::Eval(const EvalResult& res) const
+{
+    ast_->CtxMarkScope();
+    edges_[LEFT]->Eval(res);
+    auto ret_res = edges_[RIGHT]->Eval(res);
+    ast_->CtxUnmarkScope();
+    return ret_res;
+}
+
+Node::EvalResult VariableDef::Eval(const EvalResult& res) const
+{
+    auto first_res = edges_[FIRST]->Eval(res);
+    assert(HAS_NODES(first_res));
+    ast_->CtxAddVarDef(varname_, std::move(first_res.nodes));
+    return {};
+}
+
 Node::EvalResult SomeClause::Eval(const EvalResult& res) const {}
-Node::EvalResult Empty::Eval(const EvalResult& res) const {}
+
+Node::EvalResult Empty::Eval(const EvalResult& res) const
+{
+    auto first_res = edges_[FIRST]->Eval(res);
+    assert(HAS_NODES(first_res));
+    return first_res.nodes.empty();
+}
 
 }}

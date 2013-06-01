@@ -5,6 +5,7 @@
 
 #include "xquery_misc.h"
 #include "xquery_ast.h"
+#include "xquery_ast_utils.h"
 
 #ifdef USE_BOOST_GRAPHVIZ
 #include <boost/graph/graphviz.hpp>
@@ -71,7 +72,7 @@ void Ast::PlotGraph() const
 
 void Ast::Evaluate() const
 {
-    auto output = root_->Eval();
+    auto output = root_->Eval({});
 
     assert(output.type == Node::EvalResult::NODES);
     for (const auto node : output.nodes) {

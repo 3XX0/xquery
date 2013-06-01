@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <algorithm>
 
 #include "xquery_xml.h"
 #include "xquery_misc.h"
@@ -19,65 +20,12 @@ class Node : public NonCopyable, public NonMoveable
         using Edges = std::vector<const Node*>;
         using const_iterator = Edges::const_iterator;
 
-        struct EvalResult
-        {
-            enum UnionType
-            {
-                NODES,
-                COND,
-                NONE
-            };
-
-            EvalResult() : type{NONE} {};
-            EvalResult(xml::NodeList nl) : nodes{std::move(nl)}, type{NODES} {}
-            EvalResult(bool cond) : condition{cond}, type{COND} {}
-            EvalResult(EvalResult&& res) : type{res.type}
-            {
-                if (type == NODES)
-                    new (&nodes) xml::NodeList{std::move(res.nodes)};
-                else if (type == COND)
-                    condition = res.condition;
-            }
-            EvalResult& operator=(EvalResult&& res)
-            {
-                using NodeList = xml::NodeList;
-                if (&res != this) {
-                    if (type == NODES)
-                        nodes.~NodeList();
-                    if (res.type == NODES)
-                        new (&nodes) xml::NodeList{std::move(res.nodes)};
-                    else if (res.type == COND)
-                        condition = res.condition;
-                    type = res.type;
-                }
-                return *this;
-            }
-            EvalResult(const EvalResult& res) : type{res.type}
-            {
-                if (type == NODES)
-                    new (&nodes) xml::NodeList{res.nodes};
-                else if (type == COND)
-                    condition = res.condition;
-            }
-            ~EvalResult()
-            {
-                using NodeList = xml::NodeList;
-
-                if (type == NODES)
-                    nodes.~NodeList();
-            }
-
-            union {
-                xml::NodeList nodes;
-                bool          condition;
-            };
-            UnionType         type;
-        };
+        struct EvalResult;
 
         virtual ~Node() = default;
 
         // Throws `std::runtime_error' or `xml::validity_error'
-        virtual EvalResult Eval(const EvalResult& res = {}) const = 0;
+        virtual EvalResult Eval(const EvalResult& res) const = 0;
 
         const_iterator begin() const
         {
@@ -133,13 +81,46 @@ class Ast : public NonCopyable, public NonMoveable
     friend class Parser;
 
     using NodeUPtr = std::unique_ptr<const Node>;
+    #define SCOPE_DELIM "{SD}"
 
     public:
+        using VarDef = std::pair<std::string, xml::NodeList>;
+        using Context = std::vector<VarDef>;
+
         Ast() = default;
         ~Ast() = default;
 
         void PlotGraph() const; // Throws `std::ios_base'
         void Evaluate() const;  // Throws `std::runtime_error'
+
+        /*
+         * Node specific
+         */
+        void CtxMarkScope()
+        {
+            context_stack_.emplace_front(SCOPE_DELIM, xml::NodeList{});
+        }
+        Context CtxUnmarkScope()
+        {
+            Context ctx;
+
+            auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
+              [this](const VarDef& def) { return def.first == SCOPE_DELIM; });
+            std::move(std::begin(context_stack_), it, std::begin(ctx));
+            context_stack_.erase(std::begin(context_stack_), ++it);
+            return ctx;
+        }
+        void CtxAddVarDef(const std::string& varname, xml::NodeList&& nodes)
+        {
+            context_stack_.emplace_front(varname, nodes);
+        }
+        const xml::NodeList& CtxFindVarDef(const std::string& varname)
+        {
+            // TODO Check boundaries and variable validity
+            auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
+              [this, &varname](const VarDef& def) { return def.first == varname; });
+            return it->second;
+        }
 
     private:
         /*
@@ -169,6 +150,7 @@ class Ast : public NonCopyable, public NonMoveable
         }
 
         std::vector<NodeUPtr> nodes_;
+        std::deque<VarDef>    context_stack_;
         Node::Edges           edges_buf_;
         const Node*           root_ = nullptr;
 };

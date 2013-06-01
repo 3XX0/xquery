@@ -109,7 +109,7 @@
 %nonassoc '['
 %left ','
 %right PSEP
-%nonassoc TUPLE
+%nonassoc VARDEF
 
 %%
 
@@ -152,40 +152,39 @@ xq      : VAR               {
                             }
         | for let where
           return            {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, $3, $4}});   }
-        | for where return  {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, $3}});   }
-        | for let return    {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, $3}});   }
-        | for return        {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2}});   }
+        | for where return  {   $$ = NEW_NODE(xql::FLWRExpression{{$1, nullptr, $2, $3}});   }
+        | for let return    {   $$ = NEW_NODE(xql::FLWRExpression{{$1, $2, nullptr, $3}});   }
+        | for return        {   $$ = NEW_NODE(xql::FLWRExpression{{$1, nullptr, nullptr, $2}});   }
         | let xq %prec LET  {
                                 auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$2}});
                                 $$ = NEW_NODE(xql::LetExpression{{$1, xq}});
                             }
 ;
 
-fstuple : VAR IN xq
-          %prec TUPLE       {
-                                auto var = NEW_NODE(xql::Variable{*$1});
+fs_vardef : VAR IN xq
+            %prec VARDEF    {
                                 auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
-                                BUFFERIZE(NEW_NODE(xql::Tuple{{var, xq}}));
+                                BUFFERIZE(NEW_NODE(xql::VariableDef{*$1, {xq}}));
                                 delete $1;
                             }
-        | fstuple ','
-          fstuple           {}
+        | fs_vardef ','
+          fs_vardef         {}
 ;
 
-ltuple  : VAR AFFECT xq
-          %prec TUPLE       {
-                                auto var = NEW_NODE(xql::Variable{*$1});
+l_vardef  : VAR AFFECT xq
+            %prec VARDEF    {
                                 auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
-                                BUFFERIZE(NEW_NODE(xql::Tuple{{var, xq}}));
+                                BUFFERIZE(NEW_NODE(xql::VariableDef{*$1, {xq}}));
                                 delete $1;
                             }
-        | ltuple ',' ltuple {}
+        | l_vardef ',' 
+          l_vardef          {}
 ;
 
-for     : FOR fstuple       {   $$ = NEW_NODE(xql::ForClause{UNBUFFERIZE()});   }
+for     : FOR fs_vardef     {   $$ = NEW_NODE(xql::ForClause{UNBUFFERIZE()});   }
 ;
 
-let     : LET ltuple        {   $$ = NEW_NODE(xql::LetClause{UNBUFFERIZE()});   }
+let     : LET l_vardef      {   $$ = NEW_NODE(xql::LetClause{UNBUFFERIZE()});   }
 ;
 
 where   : WHERE cond        {   $$ = NEW_NODE(xql::WhereClause{{$2}});   }
@@ -194,7 +193,7 @@ where   : WHERE cond        {   $$ = NEW_NODE(xql::WhereClause{{$2}});   }
 return  : RET xq            {   $$ = NEW_NODE(xql::ReturnClause{{$2}});   }
 ;
 
-some    : SOME fstuple      {   $$ = NEW_NODE(xql::SomeClause{UNBUFFERIZE()});   }
+some    : SOME fs_vardef    {   $$ = NEW_NODE(xql::SomeClause{UNBUFFERIZE()});   }
 ;
 
 cond    : xq EQUAL xq       {

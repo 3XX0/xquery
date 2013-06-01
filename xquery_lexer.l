@@ -11,7 +11,7 @@
     #define yyterminate() return (token::END)
     #endif
 
-    #define STOKEN(...) new std::string{__VA_ARGS__}
+    #define STOKEN(...) new std::string(__VA_ARGS__) // XXX: g++ issue
 
 %}
 

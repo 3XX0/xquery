@@ -30,7 +30,7 @@ example:        [FL] where some $a in "helloworld" satisfies empty($a) and empty
 correct:        [FL] {where some $a in "helloworld" satisfies empty($a) and empty($b)} [R]
 incorrect:      [FL] {where some $a in "helloworld" satisfies empty($a)} and empty($b) [R]
 
-7. tuples conflict
+7. vardef conflict
 unknown: ???
 
 8. relative path VS. filter
