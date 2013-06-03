@@ -65,7 +65,7 @@ class ContextIterator
             NodeListSetIt set_iter;
 
             std::for_each(std::begin(ctx), std::end(ctx),
-                    [&set_iter](const Ast::VarDef& vdef){ set_iter.push_back(std::begin(vdef.second)); });
+              [&set_iter](const Ast::VarDef& vdef){ set_iter.push_back(std::begin(vdef.second)); });
             return {ctx, std::move(set_iter)};
         }
         ctx_iterator end(const Ast::Context& ctx) const

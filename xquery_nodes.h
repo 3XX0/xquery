@@ -397,7 +397,7 @@ class VariableDef : public Node
         std::string varname_;
 };
 
-class SomeClause : public Node
+class SomeClause : public Node, public ContextIterator
 {
     public:
         SomeClause(Edges&& edges) : Node{std::move(edges)}
@@ -408,6 +408,18 @@ class SomeClause : public Node
         ~SomeClause() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
+
+        ctx_iterator ctx_begin() const
+        {
+            return ContextIterator::begin(context_);
+        }
+        ctx_iterator ctx_end() const
+        {
+            return ContextIterator::end(context_);
+        }
+
+    private:
+        mutable Ast::Context context_;
 };
 
 class Empty : public Node
