@@ -88,7 +88,10 @@ class Ast : public NonCopyable, public NonMoveable
         using VarDef = std::pair<std::string, xml::NodeList>;
         using Context = std::vector<VarDef>;
 
-        Ast() = default;
+        Ast()
+        {
+            collector_.create_root_node("collector");
+        }
         ~Ast() = default;
 
         void PlotGraph() const; // Throws `std::ios_base'
@@ -97,6 +100,14 @@ class Ast : public NonCopyable, public NonMoveable
         /*
          * Node specific
          */
+        xml::Element* CollectElement(const std::string& name)
+        {
+            return collector_.get_root_node()->add_child(name);
+        }
+        xml::TextNode* CollectTextNode(const std::string& content)
+        {
+            return collector_.get_root_node()->add_child_text(content);
+        }
         void CtxMarkScope()
         {
             context_stack_.emplace_front(SCOPE_DELIM, xml::NodeList{});
@@ -107,7 +118,6 @@ class Ast : public NonCopyable, public NonMoveable
 
             auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
               [this](const VarDef& def) { return def.first == SCOPE_DELIM; });
-            //ctx.insert(std::begin(ctx), std::begin(context_stack_), it);
             ctx.resize(context_stack_.size()); 
             std::move(std::begin(context_stack_), it, std::begin(ctx));
             ctx.resize(std::distance(std::begin(context_stack_), it));
@@ -118,11 +128,12 @@ class Ast : public NonCopyable, public NonMoveable
         {
             context_stack_.emplace_front(varname, std::move(nodes));
         }
-        const xml::NodeList& CtxFindVarDef(const std::string& varname)
+        const xml::NodeList& CtxFindVarDef(const std::string& varname) // Throws
         {
-            // TODO Check boundaries and variable validity
             auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
               [this, &varname](const VarDef& def) { return def.first == varname; });
+            if (it == std::end(context_stack_))
+                throw std::runtime_error("Undefined variable " + varname);
             return it->second;
         }
 
@@ -157,6 +168,8 @@ class Ast : public NonCopyable, public NonMoveable
         std::deque<VarDef>    context_stack_;
         Node::Edges           edges_buf_;
         const Node*           root_ = nullptr;
+        xml::Document         collector_; // XXX: xmlpp pseudo factory
+        mutable xml::Document output_doc_;
 };
 
 }

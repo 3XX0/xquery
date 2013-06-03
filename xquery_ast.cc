@@ -72,24 +72,15 @@ void Ast::PlotGraph() const
 
 void Ast::Evaluate() const
 {
-    auto output = root_->Eval({});
+    auto out_res = root_->Eval({});
 
-    assert(output.type == Node::EvalResult::NODES);
-    for (const auto node : output.nodes) {
-        std::cout << "Name: \"" << node->get_name() << "\"";
-
-        // Element attribute
-        auto elem = dynamic_cast<const xml::Element*>(node);
-        if (elem) {
-            auto attr = elem->get_attribute("attr");
-            if (attr) std::cout << ", Attr: \"" << attr->get_value() << "\"";
-        }
-        // Text
-        auto text = dynamic_cast<const xml::TextNode*>(node);
-        if (text) std::cout << ", Text: \"" << text->get_content() << "\"";
-
-        std::cout << std::endl;
-    }
+    assert(out_res.type == Node::EvalResult::NODES);
+    output_doc_.create_root_node("result");
+    auto root = output_doc_.get_root_node();
+    for (const auto node : out_res.nodes)
+        root->import_node(node);
+    std::cout << "Request result :"_green << std::endl;
+    output_doc_.write_to_stream_formatted(std::cout);
 }
 
 }

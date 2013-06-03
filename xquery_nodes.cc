@@ -239,6 +239,10 @@ Node::EvalResult LogicOperator::Eval(const EvalResult& res) const
     return {}; // Should not return here
 }
 
+/*
+ * For XQuery, the `EvalResult' is actually not required.
+ */
+
 Node::EvalResult Variable::Eval(const EvalResult&) const
 {
     return ast_->CtxFindVarDef(varname_);
@@ -246,13 +250,21 @@ Node::EvalResult Variable::Eval(const EvalResult&) const
 
 Node::EvalResult ConstantString::Eval(const EvalResult&) const
 {
-    xml::TextNode* cstring = new xml::TextNode{nullptr}; // TODO Memory leak
+    xml::TextNode* cstring = ast_->CollectTextNode(cstring_);
 
-    cstring->set_content(cstring_);
     return xml::NodeList{cstring};
 }
 
-Node::EvalResult Tag::Eval(const EvalResult& res) const {}
+Node::EvalResult Tag::Eval(const EvalResult& res) const
+{
+    xml::Node* tag = ast_->CollectElement(tagname_);
+
+    auto first_res = edges_[FIRST]->Eval(res);
+    assert(HAS_NODES(first_res));
+    for (auto node : first_res.nodes)
+        tag->import_node(node);
+    return xml::NodeList{tag};
+}
 
 Node::EvalResult LetClause::Eval(const EvalResult& res) const
 {
@@ -261,7 +273,7 @@ Node::EvalResult LetClause::Eval(const EvalResult& res) const
     return {};
 }
 
-Node::EvalResult WhereClause::Eval(const EvalResult& res) const // TODO
+Node::EvalResult WhereClause::Eval(const EvalResult& res) const
 {
     return edges_[FIRST]->Eval(res);
 }
@@ -280,7 +292,7 @@ Node::EvalResult ReturnClause::Eval(const EvalResult& res) const
     return edges_[FIRST]->Eval(res);
 }
 
-Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const 
+Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const
 {
     xml::NodeList ret_nodes;
     EvalResult    ret_res;
