@@ -289,7 +289,8 @@ Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const
     auto for_res = for_clause->Eval(res);
     assert(HAS_CTX_IT(for_res));
 
-    while (for_res.iterator != for_clause->ctx_end()) {
+    const auto end = for_clause->ctx_end();
+    while (for_res.iterator != end) {
         ast_->CtxMarkScope();
         for (auto vdef : *for_res.iterator)
             ast_->CtxAddVarDef(vdef.first, {vdef.second});
@@ -306,6 +307,7 @@ Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const
         ret_nodes.splice(std::end(ret_nodes), ret_res.nodes);
 again:
         ast_->CtxUnmarkScope();
+        ++for_res.iterator;
     }
     return ret_nodes;
 }
@@ -327,7 +329,34 @@ Node::EvalResult VariableDef::Eval(const EvalResult& res) const
     return {};
 }
 
-Node::EvalResult SomeClause::Eval(const EvalResult& res) const {}
+Node::EvalResult SomeClause::Eval(const EvalResult& res) const
+{
+    EvalResult ret_res, sat_res;
+    auto satisfies_clause = *edges_.rbegin();
+
+    ast_->CtxMarkScope();
+    for (auto edge : edges_)
+        if (edge != satisfies_clause)
+            edge->Eval(res);
+    context_ = ast_->CtxUnmarkScope();
+
+    auto iterator = ctx_begin();
+    const auto end = ctx_end();
+    while (iterator != end) {
+        ast_->CtxMarkScope();
+        for (auto vdef : *iterator)
+            ast_->CtxAddVarDef(vdef.first, {vdef.second});
+        sat_res = satisfies_clause->Eval(res);
+        assert(HAS_COND(sat_res));
+        if (sat_res.condition == true) {
+            ast_->CtxUnmarkScope();
+            return true;
+        }
+        ast_->CtxUnmarkScope();
+        ++iterator;
+    }
+    return false;
+}
 
 Node::EvalResult Empty::Eval(const EvalResult& res) const
 {

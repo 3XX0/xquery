@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 #include "xquery_xml.h"
 #include "xquery_misc.h"
@@ -106,13 +107,16 @@ class Ast : public NonCopyable, public NonMoveable
 
             auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
               [this](const VarDef& def) { return def.first == SCOPE_DELIM; });
+            //ctx.insert(std::begin(ctx), std::begin(context_stack_), it);
+            ctx.resize(context_stack_.size()); 
             std::move(std::begin(context_stack_), it, std::begin(ctx));
+            ctx.resize(std::distance(std::begin(context_stack_), it));
             context_stack_.erase(std::begin(context_stack_), ++it);
             return ctx;
         }
         void CtxAddVarDef(const std::string& varname, xml::NodeList&& nodes)
         {
-            context_stack_.emplace_front(varname, nodes);
+            context_stack_.emplace_front(varname, std::move(nodes));
         }
         const xml::NodeList& CtxFindVarDef(const std::string& varname)
         {

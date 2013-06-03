@@ -1,1 +1,4 @@
-doc(file.xml)//a[b/c eq d/c and not b/c is d/c]
+for $a in doc(file.xml)//a, $b in $a//c
+let $c := $b
+where empty($c/text())
+return $c

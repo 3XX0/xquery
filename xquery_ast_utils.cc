@@ -7,7 +7,7 @@ namespace xquery
 
 bool ContextIterator::ctx_iterator::IncSetIterator(size_t idx)
 {
-    auto it = set_iter_[idx];
+    auto& it = set_iter_[idx];
     ++it;
     if (it == std::end(ctx_[idx].second)) {
         if (idx == 0)
