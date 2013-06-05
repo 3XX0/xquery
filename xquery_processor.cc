@@ -15,6 +15,7 @@ int xquery::Processor::Run(const char* filename)
         if ( !fs.good())
             throw std::ios_base::failure{"Could not open " + filename_};
 
+        // std::make_unique C++14
         lexer_ = std::unique_ptr<Lexer>{new Lexer{*this, fs}};
         parser_ = std::unique_ptr<Parser>{new Parser{*lexer_, *this}};
 

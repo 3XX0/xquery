@@ -1,6 +1,0 @@
-<working>{
-for $a in doc(file.xml)//a, $b in $a//c
-let $c := $b
-where empty($c/text())
-return $c
-}</working>

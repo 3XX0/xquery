@@ -106,7 +106,10 @@ class Ast : public NonCopyable, public NonMoveable
         }
         xml::TextNode* CollectTextNode(const std::string& content)
         {
-            return collector_.get_root_node()->add_child_text(content);
+            static size_t id = 0;
+
+            auto node = collector_.get_root_node()->add_child("#" + std::to_string(id++));
+            return node->add_child_text(content);
         }
         void CtxMarkScope()
         {
@@ -118,8 +121,10 @@ class Ast : public NonCopyable, public NonMoveable
 
             auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
               [this](const VarDef& def) { return def.first == SCOPE_DELIM; });
+            // XXX: The context stack is in reverse order
+            decltype(context_stack_)::reverse_iterator rit(it);
             ctx.resize(context_stack_.size()); 
-            std::move(std::begin(context_stack_), it, std::begin(ctx));
+            std::move(rit, context_stack_.rend(), std::begin(ctx)); // std::rend C++14
             ctx.resize(std::distance(std::begin(context_stack_), it));
             context_stack_.erase(std::begin(context_stack_), ++it);
             return ctx;

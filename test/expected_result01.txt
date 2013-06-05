@@ -1,0 +1,4 @@
+Group all acts by speaker, that is, return a list of elements of type
+element  speaks { element who {String}, (element when {String})+ }
+where the String contents of the <who> element is a speaker name,
+and the contents of the <when> elements are act names.

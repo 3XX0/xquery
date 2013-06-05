@@ -47,10 +47,11 @@ void Ast::PlotGraph() const
     std::function<void (const Node*)> trace =
         [&](const Node* node) {
             const auto kParentId = node->id();
-            for (auto child : *node) {
-                graph_edges.push_back({kParentId, child->id()});
-                trace(child);
-            }
+            for (auto child : *node)
+                if (child) {
+                    graph_edges.push_back({kParentId, child->id()});
+                    trace(child);
+                }
         };
 
     assert(root_ != nullptr);
@@ -75,7 +76,7 @@ void Ast::Evaluate() const
     auto out_res = root_->Eval({});
 
     assert(out_res.type == Node::EvalResult::NODES);
-    output_doc_.create_root_node("result");
+    output_doc_.create_root_node("root");
     auto root = output_doc_.get_root_node();
     for (const auto node : out_res.nodes)
         root->import_node(node);

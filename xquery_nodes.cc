@@ -1,4 +1,3 @@
-#include <iostream>
 #include "xquery_nodes.h"
 #include "xquery_xml.h"
 
@@ -75,7 +74,8 @@ Node::EvalResult PathSeparator::Eval(const EvalResult& res) const
 
     if (sep_ == DESC_OR_SELF) {
         for (auto node : left_res.nodes) {
-            children = node->find("//*");
+            desc_nodes.push_back(node);    // Self
+            children = node->find(".//*"); // Descendants
             desc_nodes.insert(std::end(desc_nodes),
               std::begin(children), std::end(children));
         }
@@ -151,16 +151,12 @@ bool Equality::HasValueEquality(const xml::Node* n1, const xml::Node* n2) const
 {
     // Same name
     if (n1->get_name() == n2->get_name()) {
-        auto n1_elem= dynamic_cast<const xml::Element*>(n1);
+        auto n1_elem = dynamic_cast<const xml::Element*>(n1);
         auto n2_elem = dynamic_cast<const xml::Element*>(n2);
+        auto n1_text = dynamic_cast<const xml::TextNode*>(n1);
+        auto n2_text = dynamic_cast<const xml::TextNode*>(n2);
         // Both are elements
         if (n1_elem && n2_elem) {
-            auto n1_text = n1_elem->get_child_text();
-            auto n2_text = n2_elem->get_child_text();
-            // Either the same text or none
-            if ((n1_text && n2_text &&
-                    n1_text->get_content() == n2_text->get_content())
-                    || (!n1_text && !n2_text)) {
                 auto n1_children = n1_elem->get_children();
                 auto n2_children = n2_elem->get_children();
                 auto it = std::begin(n2_children);
@@ -170,9 +166,11 @@ bool Equality::HasValueEquality(const xml::Node* n1, const xml::Node* n2) const
                 // All children respect the previous conditions
                 return std::all_of(std::begin(n1_children), std::end(n1_children),
                   [this, &it](const xml::Node* node){ return HasValueEquality(node, *it++); });
-            }
         }
-        else if (!n1_elem && !n2_elem)
+        // Both are text nodes
+        else if (n1_text && n2_text)
+            return n1_text->get_content() == n2_text->get_content();
+        else if (!n1_elem && !n2_elem && !n1_text && !n2_text)
             return true;
     }
     return false;
@@ -241,6 +239,7 @@ Node::EvalResult LogicOperator::Eval(const EvalResult& res) const
 
 /*
  * For XQuery, the `EvalResult' is actually not required.
+ * std::optional C++14 ?
  */
 
 Node::EvalResult Variable::Eval(const EvalResult&) const
