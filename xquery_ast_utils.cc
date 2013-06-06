@@ -1,23 +1,53 @@
 #include <vector>
+#include <cassert>
 
 #include "xquery_ast_utils.h"
 
 namespace xquery
 {
 
-bool ContextIterator::ctx_iterator::IncSetIterator(size_t idx)
+void ContextIterator::ctx_iterator::IncSetIterator(size_t idx)
 {
     auto& it = set_iter_[idx];
-    ++it;
-    if (it == std::end(ctx_[idx].second)) {
+
+    ref_node_->ast_->CtxPopVarDef();
+    if (++it == std::end(ctx_[idx].second)) {
         if (idx == 0)
-            return false; // Do not reset
-        if ( IncSetIterator(idx - 1))
-            it = std::begin(ctx_[idx].second);
+            ended_ = true;
         else
-            return false;
+            IncSetIterator(idx - 1);
     }
-    return true;
+    else
+        ref_node_->ast_->CtxPushVarDef(ctx_[idx].first, {*it});
+
+    // Reevaluate the upper variable definitions
+    if (!ended_ && idx < ctx_.size() - 1) {
+        ++idx;
+        // XXX: Here an empty `EvalResult' is tolerated (see xquery_nodes.cc)
+        ref_node_->edges_[idx]->Eval({});
+        auto vdef = ref_node_->ast_->CtxPopVarDef();
+        auto it = std::begin(vdef.second);
+        ref_node_->ast_->CtxPushVarDef(vdef.first, {*it});
+        ctx_[idx] = std::move(vdef);
+        set_iter_[idx] = std::move(it);
+    }
+}
+
+ContextIterator::ctx_iterator ContextIterator::begin(const Node* node) const
+{
+    Ast::Context  ctx;
+    NodeListSetIt set_iter;
+
+    for (auto edge : node->edges_) {
+        // XXX: Here an empty `EvalResult' is tolerated (see xquery_nodes.cc)
+        edge->Eval({});
+        auto vdef = node->ast_->CtxPopVarDef();
+        auto it = std::begin(vdef.second);
+        node->ast_->CtxPushVarDef(vdef.first, {*it});
+        ctx.push_back(std::move(vdef));
+        set_iter.push_back(std::move(it));
+    }
+    return {node, std::move(ctx), std::move(set_iter)};
 }
 
 Node::EvalResult::EvalResult(EvalResult&& res) : type{res.type}
@@ -56,7 +86,7 @@ Node::EvalResult::EvalResult(const EvalResult& res) : type{res.type}
     if (type == NODES)
         new (&nodes) xml::NodeList{res.nodes};
     else if (type == CTX_IT)
-        new (&iterator) ContextIterator::ctx_iterator{res.iterator};
+        assert(true); // Copying context iterator invalidate its state
     else if (type == COND)
         condition = res.condition;
 }

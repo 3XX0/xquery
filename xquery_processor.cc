@@ -42,6 +42,6 @@ int xquery::Processor::Run(const char* filename)
         return 1;
     }
 
-    std::cout << "Evaluation done"_green << std::endl;
+    std::cerr << "Evaluation done"_green << std::endl;
     return 0;
 }

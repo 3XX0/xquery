@@ -132,7 +132,10 @@ xq      : VAR               {
                                 delete $1;
                             }
         | ap                {   $$ = NEW_NODE(xql::NonTerminalNode{xql::AP, {$1}});   }
-        | '(' xq ')'        {   $$ = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$2}});   }
+        | '(' xq ')'        {
+                                auto xq = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$2}});
+                                $$ = NEW_NODE(xql::Precedence{{xq}});
+                            }
         | xq ',' xq         {
                                 auto xq1 = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$1}});
                                 auto xq2 = NEW_NODE(xql::NonTerminalNode{xql::XQ, {$3}});
@@ -221,8 +224,7 @@ cond    : xq EQUAL xq       {
         | EMPTY '(' xq ')'  {   $$ = NEW_NODE(xql::Empty{{$3}});   }
         | some SATISFY cond {
                                 auto cond = NEW_NODE(xql::NonTerminalNode{xql::COND, {$3}});
-                                $1->AddEdge(cond);
-                                $$ = $1;
+                                $$ = NEW_NODE(xql::SomeExpression{{$1, cond}});
                             }
 ;
 

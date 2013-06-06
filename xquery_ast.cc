@@ -14,7 +14,7 @@ template <typename Container>
 class graphviz_label_writer
 {
     public:
-        graphviz_label_writer(const Container& container) : container_{container} {}
+        graphviz_label_writer(const Container& container) : container_(container) {} // XXX: g++ issue
 
         template <class VertexId>
         void operator()(std::ostream& out, const VertexId& id) const
@@ -64,7 +64,7 @@ void Ast::PlotGraph() const
         throw std::ios_base::failure{"Could not open " + filename};
     boost::write_graphviz(fs, g, ::make_graphviz_label_writer(nodes_));
     fs.close();
-    std::cout << "AST generated successfully"_green << std::endl;
+    std::cerr << "AST generated successfully"_green << std::endl;
 #else
     std::cerr << "Graphiz plotting is not supported. "_yellow <<
       "Try compiling with USE_BOOST_GRAPHVIZ=true"_yellow << std::endl;
@@ -80,7 +80,7 @@ void Ast::Evaluate() const
     auto root = output_doc_.get_root_node();
     for (const auto node : out_res.nodes)
         root->import_node(node);
-    std::cout << "Request result :"_green << std::endl;
+    std::cerr << "Request result :"_green << std::endl;
     output_doc_.write_to_stream_formatted(std::cout);
 }
 

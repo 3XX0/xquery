@@ -328,16 +328,13 @@ class ForClause : public Node, public ContextIterator
 
         ctx_iterator ctx_begin() const
         {
-            return ContextIterator::begin(context_);
+            return ContextIterator::begin(this);
         }
         ctx_iterator ctx_end() const
         {
-            return ContextIterator::end(context_);
+            return ContextIterator::end();
         }
         EvalResult Eval(const EvalResult& res) const override;
-
-    private:
-        mutable Ast::Context context_;
 };
 
 class ReturnClause : public Node
@@ -397,6 +394,19 @@ class VariableDef : public Node
         std::string varname_;
 };
 
+class SomeExpression : public Node
+{
+    public:
+        SomeExpression(Edges&& edges) : Node{std::move(edges)}
+        {
+            set_label("SomeExpression");
+            assert(edges_.size() == 2);
+        }
+        ~SomeExpression() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
+};
+
 class SomeClause : public Node, public ContextIterator
 {
     public:
@@ -411,15 +421,12 @@ class SomeClause : public Node, public ContextIterator
 
         ctx_iterator ctx_begin() const
         {
-            return ContextIterator::begin(context_);
+            return ContextIterator::begin(this);
         }
         ctx_iterator ctx_end() const
         {
-            return ContextIterator::end(context_);
+            return ContextIterator::end();
         }
-
-    private:
-        mutable Ast::Context context_;
 };
 
 class Empty : public Node

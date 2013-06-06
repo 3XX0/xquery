@@ -1,5 +1,5 @@
 <result>{
-for $a in doc(b_caesar.xml)//ACT,
+for $a in doc(j_caesar.xml)//ACT,
     $sc in $a//SCENE,
     $sp in $sc/SPEECH
 where $sp/LINE/text() = "Et tu, Brute! Then fall, Caesar."

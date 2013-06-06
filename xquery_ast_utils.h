@@ -13,21 +13,21 @@ class ContextIterator
     protected:
         using NodeListIt = xml::NodeList::const_iterator;
         using NodeListSetIt = std::vector<NodeListIt>;
-        using VarDefSet = std::unordered_map<std::string, xml::Node*>;
 
     public:
         class ctx_iterator
         {
             public:
-                ctx_iterator(const Ast::Context& ctx, NodeListSetIt&& set_iter)
-                  : ctx_{ctx},
-                    set_iter_{set_iter} {}
+                ctx_iterator(const Node* ref_node, Ast::Context&& ctx, NodeListSetIt&& set_iter)
+                  : ref_node_{ref_node},
+                    ctx_{std::move(ctx)},
+                    set_iter_{std::move(set_iter)} {}
+                ctx_iterator(bool ended) : ended_{ended} {}
                 ctx_iterator(ctx_iterator&& it)
-                  : ctx_{std::move(it.ctx_)},
-                    set_iter_{std::move(it.set_iter_)} {}
-                ctx_iterator(const ctx_iterator& it)
-                  : ctx_{it.ctx_},
-                    set_iter_{it.set_iter_} {}
+                  : ref_node_{it.ref_node_},
+                    ctx_{std::move(it.ctx_)},
+                    set_iter_{std::move(it.set_iter_)},
+                    ended_{it.ended_} {}
                 ~ctx_iterator() = default;
 
                 ctx_iterator& operator++()
@@ -37,44 +37,26 @@ class ContextIterator
                 }
                 bool operator==(const ctx_iterator& it) const
                 {
-                    return std::equal(std::begin(set_iter_), std::end(set_iter_),
-                            std::begin(it.set_iter_));
+                    return ended_ == it.ended_;
                 }
                 bool operator!=(const ctx_iterator& it) const
                 {
                     return !operator==(it);
                 }
-                VarDefSet operator*() const
-                {
-                    VarDefSet set;
-
-                    for (size_t i = 0; i < ctx_.size(); ++i)
-                        set[ctx_[i].first] = *set_iter_[i];
-                    return set;
-                }
 
             private:
-                bool IncSetIterator(size_t idx);
+                void IncSetIterator(size_t idx);
 
-                const Ast::Context& ctx_;
-                NodeListSetIt       set_iter_;
+                const Node*   ref_node_ = nullptr;
+                Ast::Context  ctx_;
+                NodeListSetIt set_iter_;
+                bool          ended_ = false;
         };
 
-        ctx_iterator begin(const Ast::Context& ctx) const
+        ctx_iterator begin(const Node* node) const;
+        ctx_iterator end() const
         {
-            NodeListSetIt set_iter;
-
-            std::for_each(std::begin(ctx), std::end(ctx),
-              [&set_iter](const Ast::VarDef& vdef){ set_iter.push_back(std::begin(vdef.second)); });
-            return {ctx, std::move(set_iter)};
-        }
-        ctx_iterator end(const Ast::Context& ctx) const
-        {
-            NodeListSetIt set_iter;
-
-            std::for_each(std::begin(ctx), std::end(ctx),
-                    [&set_iter](const Ast::VarDef& vdef){ set_iter.push_back(std::end(vdef.second)); });
-            return {ctx, std::move(set_iter)};
+            return true;
         }
 };
 

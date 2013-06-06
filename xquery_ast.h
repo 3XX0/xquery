@@ -16,6 +16,7 @@ class Ast;
 class Node : public NonCopyable, public NonMoveable
 {
     friend class Ast;
+    friend class ContextIterator;
 
     public:
         using Edges = std::vector<const Node*>;
@@ -35,10 +36,6 @@ class Node : public NonCopyable, public NonMoveable
         const_iterator end() const
         {
             return std::end(edges_);
-        }
-        void AddEdge(const Node* node) const
-        {
-            edges_.push_back(node);
         }
         const std::string& label() const
         {
@@ -87,6 +84,7 @@ class Ast : public NonCopyable, public NonMoveable
     public:
         using VarDef = std::pair<std::string, xml::NodeList>;
         using Context = std::vector<VarDef>;
+        using ContextStack = std::deque<VarDef>;
 
         Ast()
         {
@@ -111,27 +109,25 @@ class Ast : public NonCopyable, public NonMoveable
             auto node = collector_.get_root_node()->add_child("#" + std::to_string(id++));
             return node->add_child_text(content);
         }
-        void CtxMarkScope()
+        void CtxNew()
         {
             context_stack_.emplace_front(SCOPE_DELIM, xml::NodeList{});
         }
-        Context CtxUnmarkScope()
+        void CtxDestroy()
         {
-            Context ctx;
-
             auto it = std::find_if(std::begin(context_stack_), std::end(context_stack_),
               [this](const VarDef& def) { return def.first == SCOPE_DELIM; });
-            // XXX: The context stack is in reverse order
-            decltype(context_stack_)::reverse_iterator rit(it);
-            ctx.resize(context_stack_.size()); 
-            std::move(rit, context_stack_.rend(), std::begin(ctx)); // std::rend C++14
-            ctx.resize(std::distance(std::begin(context_stack_), it));
             context_stack_.erase(std::begin(context_stack_), ++it);
-            return ctx;
         }
-        void CtxAddVarDef(const std::string& varname, xml::NodeList&& nodes)
+        void CtxPushVarDef(const std::string& varname, xml::NodeList&& nodes)
         {
             context_stack_.emplace_front(varname, std::move(nodes));
+        }
+        VarDef CtxPopVarDef()
+        {
+            auto vdef = context_stack_.front();
+            context_stack_.pop_front();
+            return vdef;
         }
         const xml::NodeList& CtxFindVarDef(const std::string& varname) // Throws
         {
@@ -170,7 +166,7 @@ class Ast : public NonCopyable, public NonMoveable
         }
 
         std::vector<NodeUPtr> nodes_;
-        std::deque<VarDef>    context_stack_;
+        ContextStack          context_stack_;
         Node::Edges           edges_buf_;
         const Node*           root_ = nullptr;
         xml::Document         collector_; // XXX: xmlpp pseudo factory
