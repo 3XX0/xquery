@@ -15,6 +15,9 @@
 #define HAS_COND(x) (x.type == EvalResult::COND)
 #define HAS_CTX_IT(x) (x.type == EvalResult::CTX_IT)
 
+#define NEW_NODE(...) ast_->AddNode(new __VA_ARGS__)
+#define DEL_NODE(x) ast_->DeleteNode(x)
+
 namespace xquery { namespace lang
 {
 
@@ -196,6 +199,16 @@ Node::EvalResult Equality::Eval(const EvalResult& res) const
           [&it](const xml::Node* node){ return node == *it++; });
 }
 
+void Equality::FindAll(Node* node, EqualityList& list)
+{
+    auto equality = dynamic_cast<Equality*>(node);
+    if (equality != nullptr)
+        list.push_back(equality);
+    for (const auto& edge : node->edges())
+        if (edge)
+            FindAll(edge, list);
+}
+
 Node::EvalResult LogicOperator::Eval(const EvalResult& res) const
 {
     xml::NodeList logic_set;
@@ -247,6 +260,16 @@ Node::EvalResult Variable::Eval(const EvalResult&) const
     return ast_->CtxFindVarDef(varname_);
 }
 
+void Variable::FindAll(Node* node, VariableList& list)
+{
+    auto variable = dynamic_cast<Variable*>(node);
+    if (variable != nullptr)
+        list.push_back(variable);
+    for (const auto& edge : node->edges())
+        if (edge)
+            FindAll(edge, list);
+}
+
 Node::EvalResult ConstantString::Eval(const EvalResult&) const
 {
     xml::TextNode* cstring = ast_->CollectTextNode(cstring_);
@@ -277,9 +300,80 @@ Node::EvalResult WhereClause::Eval(const EvalResult& res) const
     return edges_[FIRST]->Eval(res);
 }
 
+WhereClause::ImplicitJoins WhereClause::LookupImplicitJoins()
+{
+    // TODO find ALL the implicit join operations
+
+    Equality::EqualityList  eq_list;
+    ImplicitJoins           joins;
+
+    Equality::FindAll(edges_[FIRST], eq_list);
+
+    for (auto eq : eq_list) {
+        const auto& edges = eq->edges();
+        const auto& left_edges = edges[LEFT]->edges(); // XXX: LH XQ
+        const auto& right_edges = edges[RIGHT]->edges(); // XXX: RHS XQ
+        auto left_var = dynamic_cast<Variable*>(left_edges[FIRST]);
+        auto right_var = dynamic_cast<Variable*>(right_edges[FIRST]);
+
+        if (left_var && right_var) { // Found join operation
+            joins.emplace_back(left_var->varname(), right_var->varname());
+            auto child = static_cast<Node*>(eq);
+            auto parent = child->parent();
+            while (parent->edges().size() == 1 && parent != this) {
+                child = parent;
+                parent = parent->parent();
+            }
+            auto grandparent = parent->parent();
+
+            if (parent == this) { // Our parent is a where clause
+                grandparent->edges()[WHERE] = nullptr;
+                DEL_NODE(this);
+            }
+            else { // Relink properly
+                grandparent->DeleteEdge(parent);
+                for (auto edge : parent->edges())
+                    if (edge != child) {
+                        parent->DeleteEdge(edge);
+                        grandparent->AddEdge(edge);
+                    }
+                DEL_NODE(parent);
+            }
+            break;
+        }
+    }
+    return joins;
+}
+
 Node::EvalResult ForClause::Eval(const EvalResult&) const
 {
     return ctx_begin();
+}
+
+ForClause::VarDependencies ForClause::LookupDependencies() const
+{
+    // TODO build an inverted index to check for useless joins
+
+    std::map<std::string, VariableDef*> vdef_names;
+    VariableDef*                        vdef;
+    VarDependencies                     var_dep;
+
+    for (auto edge : edges_) {
+        vdef = static_cast<VariableDef*>(edge);
+        vdef_names.emplace(vdef->varname(), vdef);
+    }
+    for (auto edge : edges_) {
+        vdef = static_cast<VariableDef*>(edge);
+        auto var_ref = vdef->LookupReferences();
+
+        for (auto ref : var_ref) {
+            auto it = vdef_names.find(ref);
+            if (it != std::end(vdef_names))
+                var_dep[vdef->varname()].insert(it->second);
+        }
+        var_dep[vdef->varname()].insert(vdef);
+    }
+    return var_dep;
 }
 
 Node::EvalResult ReturnClause::Eval(const EvalResult& res) const
@@ -316,6 +410,92 @@ Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const
     return ret_nodes;
 }
 
+Node* FLWRExpression::WriteNewExpression(const std::string& join_var,
+                      const ForClause::VarDependencies& deps,
+                      Node* where_clause) const
+{
+    Node::Edges for_edges;
+    Node::Edges tuple_edges;
+
+    // TODO recursive search
+    for (const auto& dep : deps.at(join_var)) {
+        dep->parent()->DeleteEdge(dep); // XXX: restrict variable sharing
+        auto dep_name = dep->varname();
+        for_edges.push_back(dep);
+        auto var = NEW_NODE(Variable{dep_name});
+        auto var_tag = NEW_NODE(Tag{dep_name, dep_name, {var}});
+        tuple_edges.push_back(var_tag);
+    }
+    auto for_clause = NEW_NODE(ForClause{std::move(for_edges)});
+    auto tuple_tag = NEW_NODE(Tag{"tuple", "tuple", std::move(tuple_edges)});
+    auto ret_clause = NEW_NODE(ReturnClause{{tuple_tag}});
+
+    return NEW_NODE(FLWRExpression{{for_clause, where_clause, nullptr, ret_clause}});
+}
+
+bool FLWRExpression::CorrelateDependencies(const std::string& join_var,
+                     const ForClause::VarDependencies& deps,
+                     const Variable::VariableList& var_list)
+{
+    const auto& dep_set = deps.at(join_var);
+
+    for (auto var : var_list) {
+        auto it = std::find_if(std::begin(dep_set), std::end(dep_set),
+          [var](const VariableDef* vdef) { return vdef->varname() == var->varname(); });
+        if (it == std::end(dep_set))
+            return false;
+    }
+    return true;
+}
+
+void FLWRExpression::Rewrite()
+{
+    Variable::VariableList var_list;
+    Node *where1 = nullptr, *where2 = nullptr;
+    auto for_clause = static_cast<ForClause*>(edges_[FOR]);
+
+    if (edges_[WHERE] != nullptr) {
+        auto where_clause = static_cast<WhereClause*>(edges_[WHERE]);
+        auto joins = where_clause->LookupImplicitJoins();
+        if (!joins.empty()) { // A join is present, rewritting is needed
+            auto deps = for_clause->LookupDependencies();
+            // Where migration
+            if (edges_[WHERE] != nullptr) {
+                Variable::FindAll(edges_[WHERE], var_list);
+                auto cor1 = CorrelateDependencies(joins[0].first, deps, var_list);
+                auto cor2 = CorrelateDependencies(joins[0].second, deps, var_list);
+                if (cor1 && !cor2)
+                    where1 = edges_[WHERE];
+                else if (!cor1 && cor2)
+                    where2 = edges_[WHERE];
+                else if (cor1 && cor2) // TODO We need to be smarter here
+                    throw std::runtime_error("Could not resolve implicit join dependencies");
+                if (cor1 || cor2)
+                    edges_[WHERE] = nullptr;
+            }
+            // Join generation
+            auto flwr1 = WriteNewExpression(joins[0].first, deps, where1);
+            auto flwr2 = WriteNewExpression(joins[0].second, deps, where2);
+            auto join = NEW_NODE(Join{{flwr1, flwr2}});
+            auto vdef = NEW_NODE(VariableDef{"tuple", {join}});
+            for_clause->AddEdge(vdef);
+            // Return rewritting
+            var_list.clear();
+            Variable::FindAll(edges_[RET], var_list);
+            for (auto var : var_list) {
+                auto parent = var->parent();
+                parent->DeleteEdge(var);
+                auto tuple_var = NEW_NODE(Variable{"tuple"});
+                auto tagname = NEW_NODE(TagName{var->varname()});
+                auto psep = NEW_NODE(PathSeparator{"/", {tuple_var, tagname}});
+                parent->AddEdge(psep);
+                DEL_NODE(var);
+            }
+        }
+    }
+    Node::Rewrite();
+}
+
 Node::EvalResult LetExpression::Eval(const EvalResult& res) const
 {
     ast_->CtxNew();
@@ -331,6 +511,17 @@ Node::EvalResult VariableDef::Eval(const EvalResult& res) const
     assert(HAS_NODES(first_res));
     ast_->CtxPushVarDef(varname_, std::move(first_res.nodes));
     return {};
+}
+
+VariableDef::VarReferences VariableDef::LookupReferences() const
+{
+    VarReferences           var_ref;
+    Variable::VariableList  var_list;
+
+    Variable::FindAll(edges_[FIRST], var_list);
+    for (auto var : var_list)
+        var_ref.insert(var->varname());
+    return var_ref;
 }
 
 Node::EvalResult SomeExpression::Eval(const EvalResult& res) const
@@ -363,6 +554,11 @@ Node::EvalResult Empty::Eval(const EvalResult& res) const
     auto first_res = edges_[FIRST]->Eval(res);
     assert(HAS_NODES(first_res));
     return first_res.nodes.empty();
+}
+
+Node::EvalResult Join::Eval(const EvalResult& res) const
+{
+
 }
 
 }}

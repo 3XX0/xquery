@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <cassert>
 #include <algorithm>
+#include <set>
 
 #include "xquery_ast.h"
 #include "xquery_ast_utils.h"
@@ -191,6 +192,8 @@ class Equality : public Node
     };
 
     public:
+        using EqualityList = std::vector<Equality*>;
+
         Equality(const std::string& token, Edges&& edges) : Node{std::move(edges)}
         {
             eq_ = kMap_.at(token);
@@ -200,6 +203,7 @@ class Equality : public Node
         ~Equality() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
+        static void FindAll(Node* node, EqualityList& list);
 
     private:
         bool HasValueEquality(const xml::Node* n1, const xml::Node* n2) const;
@@ -245,13 +249,21 @@ class LogicOperator : public Node
 class Variable : public Node
 {
     public:
+        using VariableList = std::vector<Variable*>;
+
         Variable(const std::string& varname) : varname_{varname}
         {
             set_label("Variable `" + varname_ + "'");
         }
         ~Variable() = default;
 
+        const std::string& varname() const
+        {
+            return varname_;
+        }
+
         EvalResult Eval(const EvalResult& res) const override;
+        static void FindAll(Node* node, VariableList& list);
 
     private:
         std::string varname_;
@@ -305,6 +317,8 @@ class LetClause : public Node
 
 class WhereClause : public Node
 {
+    using ImplicitJoins = std::vector<std::pair<std::string, std::string>>;
+
     public:
         WhereClause(Edges&& edges) : Node{std::move(edges)}
         {
@@ -314,11 +328,40 @@ class WhereClause : public Node
         ~WhereClause() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
+        ImplicitJoins LookupImplicitJoins();
+};
+
+class VariableDef : public Node
+{
+    using VarReferences = std::set<std::string>;
+
+    public:
+        VariableDef(const std::string& varname, Edges&& edges)
+          : Node{std::move(edges)},
+            varname_{varname}
+        {
+            set_label("VariableDef `" + varname_ + "'");
+            assert(edges_.size() == 1);
+        }
+        ~VariableDef() = default;
+
+        const std::string& varname() const
+        {
+            return varname_;
+        }
+
+        EvalResult Eval(const EvalResult& res) const override;
+        VarReferences LookupReferences() const;
+
+    private:
+        std::string varname_;
 };
 
 class ForClause : public Node, public ContextIterator
 {
     public:
+        using VarDependencies = std::map<std::string, std::set<VariableDef*>>;
+
         ForClause(Edges&& edges) : Node{std::move(edges)}
         {
             set_label("ForClause");
@@ -335,6 +378,7 @@ class ForClause : public Node, public ContextIterator
             return ContextIterator::end();
         }
         EvalResult Eval(const EvalResult& res) const override;
+        VarDependencies LookupDependencies() const;
 };
 
 class ReturnClause : public Node
@@ -361,6 +405,15 @@ class FLWRExpression : public Node
         ~FLWRExpression() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
+        void Rewrite() override;
+
+    private:
+        Node* WriteNewExpression(const std::string& join_var,
+              const ForClause::VarDependencies& deps,
+              Node* where_clause) const;
+        bool CorrelateDependencies(const std::string& join_var,
+                     const ForClause::VarDependencies& deps,
+                     const Variable::VariableList& var_list);
 };
 
 class LetExpression : public Node
@@ -374,24 +427,6 @@ class LetExpression : public Node
         ~LetExpression() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
-};
-
-class VariableDef : public Node
-{
-    public:
-        VariableDef(const std::string& varname, Edges&& edges)
-          : Node{std::move(edges)},
-            varname_{varname}
-        {
-            set_label("VariableDef");
-            assert(edges_.size() == 1);
-        }
-        ~VariableDef() = default;
-
-        EvalResult Eval(const EvalResult& res) const override;
-
-    private:
-        std::string varname_;
 };
 
 class SomeExpression : public Node
@@ -438,6 +473,19 @@ class Empty : public Node
             assert(edges_.size() == 1);
         }
         ~Empty() = default;
+
+        EvalResult Eval(const EvalResult& res) const override;
+};
+
+class Join : public Node
+{
+    public:
+        Join(Edges&& edges) : Node{std::move(edges)}
+        {
+            set_label("Join");
+            assert(edges_.size() == 2);
+        }
+        ~Join() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
 };

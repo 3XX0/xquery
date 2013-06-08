@@ -54,7 +54,7 @@
 %union
 {
     std::string* sval;
-    const Node*  node;
+    Node*        node;
 }
 
 %token        END       0   "EOF"

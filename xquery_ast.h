@@ -19,7 +19,7 @@ class Node : public NonCopyable, public NonMoveable
     friend class ContextIterator;
 
     public:
-        using Edges = std::vector<const Node*>;
+        using Edges = std::vector<Node*>;
         using const_iterator = Edges::const_iterator;
 
         struct EvalResult;
@@ -28,6 +28,12 @@ class Node : public NonCopyable, public NonMoveable
 
         // Throws `std::runtime_error' or `xml::validity_error'
         virtual EvalResult Eval(const EvalResult& res) const = 0;
+        virtual void Rewrite()
+        {
+            for (auto edge : edges_)
+                if (edge)
+                    edge->Rewrite();
+        }
 
         const_iterator begin() const
         {
@@ -37,26 +43,57 @@ class Node : public NonCopyable, public NonMoveable
         {
             return std::end(edges_);
         }
+
+        void AddEdge(Node* edge)
+        {
+            edges_.push_back(edge);
+        }
+        void DeleteEdge(const Node* edge)
+        {
+            auto it = std::find(std::begin(edges_), std::end(edges_), edge);
+            if (it != std::end(edges_))
+                edges_.erase(it);
+        }
+
         const std::string& label() const
         {
             return label_;
         }
+        Edges& edges()
+        {
+            return edges_;
+        }
+        Node* parent()
+        {
+            return parent_;
+        }
 
     protected:
         Node() = default;
-        Node(Edges&& edges) : edges_{std::move(edges)}, ast_{nullptr} {}
+        Node(Edges&& edges) : edges_{std::move(edges)}, ast_{nullptr}
+        {
+            for (auto edge : edges_)
+                if (edge)
+                    edge->set_parent(this);
+        }
 
         void set_label(const std::string& label)
         {
             label_ = label;
         }
 
-        mutable Edges edges_;
-        std::string   label_;
-        size_t        id_ = 0;
-        Ast*          ast_;
+        Node*       parent_;
+        Edges       edges_;
+        std::string label_;
+        size_t      id_ = 0;
+        Ast*        ast_;
 
     private:
+        void set_parent(Node* parent)
+        {
+            parent_ = parent;
+        }
+
         /*
          * Ast specific
          */
@@ -78,7 +115,7 @@ class Ast : public NonCopyable, public NonMoveable
 {
     friend class Parser;
 
-    using NodeUPtr = std::unique_ptr<const Node>;
+    using NodeUPtr = std::unique_ptr<Node>;
     #define SCOPE_DELIM "{SD}"
 
     public:
@@ -94,10 +131,29 @@ class Ast : public NonCopyable, public NonMoveable
 
         void PlotGraph() const; // Throws `std::ios_base'
         void Evaluate() const;  // Throws `std::runtime_error'
+        void Rewrite();
 
         /*
          * Node specific
          */
+        Node* AddNode(Node* node)
+        {
+            node->set_id(nodes_.size());
+            node->set_ast(this);
+            nodes_.push_back(NodeUPtr{node});
+            return node;
+        }
+        void DeleteNode(Node* node)
+        {
+            for (auto edge : node->edges())
+                DeleteNode(edge);
+            auto it = std::find_if(std::begin(nodes_), std::end(nodes_),
+              [node](const NodeUPtr& ptr) {return ptr.get() == node;});
+            if (it != std::end(nodes_))
+                nodes_.erase(it);
+            for (size_t i = 0; i < nodes_.size(); ++i) // ID renumbering
+                nodes_[i]->set_id(i);
+        }
         xml::Element* CollectElement(const std::string& name)
         {
             return collector_.get_root_node()->add_child(name);
@@ -142,15 +198,9 @@ class Ast : public NonCopyable, public NonMoveable
         /*
          * Parser specific
          */
-        const Node* AddNode(Node* node)
-        {
-            node->set_id(nodes_.size());
-            node->set_ast(this);
-            nodes_.push_back(NodeUPtr{node});
-            return node;
-        }
+
         // Helpers to populate the edges of a node using a recursion rule
-        void BufferizeEdge(const Node* node)
+        void BufferizeEdge(Node* node)
         {
             edges_buf_.push_back(node);
         }
@@ -160,7 +210,7 @@ class Ast : public NonCopyable, public NonMoveable
             edges_buf_.clear();
             return edges;
         }
-        void set_root(const Node* node)
+        void set_root(Node* node)
         {
             root_ = node;
         }
@@ -168,7 +218,7 @@ class Ast : public NonCopyable, public NonMoveable
         std::vector<NodeUPtr> nodes_;
         ContextStack          context_stack_;
         Node::Edges           edges_buf_;
-        const Node*           root_ = nullptr;
+        Node*                 root_ = nullptr;
         xml::Document         collector_; // XXX: xmlpp pseudo factory
         mutable xml::Document output_doc_;
 };

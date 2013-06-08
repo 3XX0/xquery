@@ -2,7 +2,7 @@ XMLPP_INC ?= `pkg-config --cflags libxml++-2.6`
 XMLPP_LIB ?= `pkg-config --libs libxml++-2.6`
 
 CXX = g++
-CXXFLAGS = -O3 -W -Wall -Wextra -Wno-unused-local-typedefs -std=c++11 -march=native $(XMLPP_INC)
+CXXFLAGS = -O3 -W -Wall -Wextra -Wno-unknown-warning-option -Wno-unused-local-typedefs -std=c++11 -march=native $(XMLPP_INC)
 LDFLAGS = -lfl $(XMLPP_LIB)
 
 ifdef USE_BOOST_GRAPHVIZ

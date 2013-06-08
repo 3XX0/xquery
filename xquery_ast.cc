@@ -84,4 +84,9 @@ void Ast::Evaluate() const
     output_doc_.write_to_stream_formatted(std::cout);
 }
 
+void Ast::Rewrite()
+{
+    root_->Rewrite();
+}
+
 }

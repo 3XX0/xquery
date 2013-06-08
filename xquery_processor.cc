@@ -24,6 +24,7 @@ int xquery::Processor::Run(const char* filename)
             return 1;
         }
 
+        ast_.Rewrite();
         ast_.PlotGraph(); // Throws
         ast_.Evaluate();  // Throws
     }
