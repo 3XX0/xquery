@@ -436,6 +436,7 @@ Node* FLWRExpression::WriteNewExpression(const std::string& join_var,
               dep_search(dep_name);
           }
       };
+    dep_search(join_var);
     auto join_vdef = deps.at(join_var).first;
     if (join_vdef->parent()->parent() != previous_expr)
         join_vdef->parent()->DeleteEdge(join_vdef);
@@ -444,7 +445,6 @@ Node* FLWRExpression::WriteNewExpression(const std::string& join_var,
     auto var = NEW_NODE(Variable{join_name});
     auto var_tag = NEW_NODE(Tag{join_name, join_name, {var}});
     tuple_edges.push_back(var_tag);
-    dep_search(join_var);
 
     auto for_clause = NEW_NODE(ForClause{std::move(for_edges)});
     std::function<Node* ()> concatenate =
@@ -506,7 +506,7 @@ void FLWRExpression::Rewrite()
             // Join generation
             auto flwr1 = WriteNewExpression(joins[0].first, deps, where1);
             auto flwr2 = WriteNewExpression(joins[0].second, deps, where2, flwr1);
-            auto join = NEW_NODE(Join{{flwr1, flwr2}});
+            auto join = NEW_NODE(Join{std::move(joins[0]), {flwr1, flwr2}});
             auto vdef = NEW_NODE(VariableDef{"tuple", {join}});
             for_clause->AddEdge(vdef);
             // Return rewritting
@@ -517,8 +517,10 @@ void FLWRExpression::Rewrite()
                 parent->DeleteEdge(var);
                 auto tuple_var = NEW_NODE(Variable{"tuple"});
                 auto tagname = NEW_NODE(TagName{var->varname()});
-                auto psep = NEW_NODE(PathSeparator{"/", {tuple_var, tagname}});
-                parent->AddEdge(psep);
+                auto glob = NEW_NODE(PathGlobbing{"*"});
+                auto psep1 = NEW_NODE(PathSeparator{"/", {tagname, glob}});
+                auto psep2 = NEW_NODE(PathSeparator{"/", {tuple_var, psep1}});
+                parent->AddEdge(psep2);
                 DEL_NODE(var);
             }
         }
@@ -586,9 +588,46 @@ Node::EvalResult Empty::Eval(const EvalResult& res) const
     return first_res.nodes.empty();
 }
 
-Node::EvalResult Join::Eval(const EvalResult& res) const
+Node::EvalResult Join::Eval(const EvalResult&) const
 {
+    xml::NodeList ret_node;
+    std::unordered_map<std::string , xml::NodeList> hash_table;
 
+    auto left_res = edges_[LEFT]->Eval({});
+    auto right_res = edges_[RIGHT]->Eval({});
+    assert(HAS_NODES(left_res));
+    assert(HAS_NODES(right_res));
+
+    for (auto node : left_res.nodes)
+    {
+        xml::Document doc;
+
+        auto join_var = node->get_first_child(vars_.first);
+        doc.create_root_node_by_import(join_var->get_first_child()); // Remove tag
+        auto hash_key = doc.write_to_string();
+        hash_table[hash_key] = node->get_children();
+    }
+    for (auto node : right_res.nodes)
+    {
+        xml::Document doc;
+
+        auto join_var = node->get_first_child(vars_.second);
+        doc.create_root_node_by_import(join_var->get_first_child()); // Remove tag
+        auto hash_key = doc.write_to_string();
+
+        // Generate output Tag
+        try {
+            auto lhs_collection = hash_table.at(hash_key);
+            auto rhs_collection = node->get_children();
+            auto tag = ast_->CollectElement("tuple");
+            lhs_collection.splice(std::end(lhs_collection), rhs_collection);
+            for (auto elem : lhs_collection)
+                tag->import_node(elem);
+            ret_node.push_back(tag);
+        }
+        catch (const std::out_of_range) {}
+    }
+    return ret_node;
 }
 
 }}

@@ -480,8 +480,12 @@ class Empty : public Node
 
 class Join : public Node
 {
+    using JoinVariable = std::pair<std::string, std::string>;
+
     public:
-        Join(Edges&& edges) : Node{std::move(edges)}
+        Join(JoinVariable&& vars, Edges&& edges)
+          : Node{std::move(edges)},
+            vars_{std::move(vars)}
         {
             set_label("Join");
             assert(edges_.size() == 2);
@@ -489,6 +493,9 @@ class Join : public Node
         ~Join() = default;
 
         EvalResult Eval(const EvalResult& res) const override;
+
+    private:
+        JoinVariable vars_;
 };
 
 }}

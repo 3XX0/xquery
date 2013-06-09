@@ -11,7 +11,10 @@ void ContextIterator::ctx_iterator::IncSetIterator(size_t idx)
     auto& it = set_iter_[idx];
 
     ref_node_->ast_->CtxPopVarDef();
-    if (++it == std::end(ctx_[idx].second)) {
+    // XXX: it appears that moving an end iterator (see `begin')
+    // invalidate its state thus we need this additional check
+    if (ctx_[idx].second.empty() ||
+        ++it == std::end(ctx_[idx].second)) {
         if (idx == 0)
             ended_ = true;
         else
@@ -43,7 +46,10 @@ ContextIterator::ctx_iterator ContextIterator::begin(const Node* node) const
         edge->Eval({});
         auto vdef = node->ast_->CtxPopVarDef();
         auto it = std::begin(vdef.second);
-        node->ast_->CtxPushVarDef(vdef.first, {*it});
+        if (it == std::end(vdef.second))
+            node->ast_->CtxPushVarDef(vdef.first, {});
+        else
+            node->ast_->CtxPushVarDef(vdef.first, {*it});
         ctx.push_back(std::move(vdef));
         set_iter.push_back(std::move(it));
     }
