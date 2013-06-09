@@ -307,6 +307,9 @@ WhereClause::ImplicitJoins WhereClause::LookupImplicitJoins()
     Equality::EqualityList  eq_list;
     ImplicitJoins           joins;
 
+    if ( dynamic_cast<SomeExpression*>(edges_[FIRST]))
+        return joins; // TODO handle some joins
+
     Equality::FindAll(edges_[FIRST], eq_list);
 
     for (auto eq : eq_list) {
@@ -364,14 +367,15 @@ ForClause::VarDependencies ForClause::LookupDependencies() const
     }
     for (auto edge : edges_) {
         vdef = static_cast<VariableDef*>(edge);
+        const auto& vdef_name = vdef->varname();
         auto var_ref = vdef->LookupReferences();
 
         for (auto ref : var_ref) {
             auto it = vdef_names.find(ref);
             if (it != std::end(vdef_names))
-                var_dep[vdef->varname()].insert(it->second);
+                var_dep[vdef_name].second.insert(it->second);
         }
-        var_dep[vdef->varname()].insert(vdef);
+        var_dep[vdef_name].first = vdef;
     }
     return var_dep;
 }
@@ -412,22 +416,48 @@ Node::EvalResult FLWRExpression::Eval(const EvalResult& res) const
 
 Node* FLWRExpression::WriteNewExpression(const std::string& join_var,
                       const ForClause::VarDependencies& deps,
-                      Node* where_clause) const
+                      Node* where_clause, Node* previous_expr) const
 {
     Node::Edges for_edges;
     Node::Edges tuple_edges;
 
-    // TODO recursive search
-    for (const auto& dep : deps.at(join_var)) {
-        dep->parent()->DeleteEdge(dep); // XXX: restrict variable sharing
-        auto dep_name = dep->varname();
-        for_edges.push_back(dep);
-        auto var = NEW_NODE(Variable{dep_name});
-        auto var_tag = NEW_NODE(Tag{dep_name, dep_name, {var}});
-        tuple_edges.push_back(var_tag);
-    }
+    std::function<void (const std::string&)> dep_search =
+      [&](const std::string& look_var)
+      {
+          for (const auto& dep : deps.at(look_var).second) {
+              if (dep->parent()->parent() != previous_expr)
+                  dep->parent()->DeleteEdge(dep);
+              const auto& dep_name = dep->varname();
+              for_edges.push_back(dep);
+              auto var = NEW_NODE(Variable{dep_name});
+              auto var_tag = NEW_NODE(Tag{dep_name, dep_name, {var}});
+              tuple_edges.push_back(var_tag);
+              // Recursive dependencies search
+              dep_search(dep_name);
+          }
+      };
+    auto join_vdef = deps.at(join_var).first;
+    if (join_vdef->parent()->parent() != previous_expr)
+        join_vdef->parent()->DeleteEdge(join_vdef);
+    const auto& join_name = join_vdef->varname();
+    for_edges.push_back(join_vdef);
+    auto var = NEW_NODE(Variable{join_name});
+    auto var_tag = NEW_NODE(Tag{join_name, join_name, {var}});
+    tuple_edges.push_back(var_tag);
+    dep_search(join_var);
+
     auto for_clause = NEW_NODE(ForClause{std::move(for_edges)});
-    auto tuple_tag = NEW_NODE(Tag{"tuple", "tuple", std::move(tuple_edges)});
+    std::function<Node* ()> concatenate =
+      [&]()
+      {
+          auto edge = tuple_edges.back();
+          tuple_edges.pop_back();
+          if (tuple_edges.size() > 0)
+              return NEW_NODE(Concatenation{{edge, concatenate()}});
+          else
+              return edge;
+      };
+    auto tuple_tag = NEW_NODE(Tag{"tuple", "tuple", {concatenate()}});
     auto ret_clause = NEW_NODE(ReturnClause{{tuple_tag}});
 
     return NEW_NODE(FLWRExpression{{for_clause, where_clause, nullptr, ret_clause}});
@@ -437,7 +467,7 @@ bool FLWRExpression::CorrelateDependencies(const std::string& join_var,
                      const ForClause::VarDependencies& deps,
                      const Variable::VariableList& var_list)
 {
-    const auto& dep_set = deps.at(join_var);
+    const auto& dep_set = deps.at(join_var).second;
 
     for (auto var : var_list) {
         auto it = std::find_if(std::begin(dep_set), std::end(dep_set),
@@ -475,7 +505,7 @@ void FLWRExpression::Rewrite()
             }
             // Join generation
             auto flwr1 = WriteNewExpression(joins[0].first, deps, where1);
-            auto flwr2 = WriteNewExpression(joins[0].second, deps, where2);
+            auto flwr2 = WriteNewExpression(joins[0].second, deps, where2, flwr1);
             auto join = NEW_NODE(Join{{flwr1, flwr2}});
             auto vdef = NEW_NODE(VariableDef{"tuple", {join}});
             for_clause->AddEdge(vdef);

@@ -293,6 +293,7 @@ class Tag : public Node
         {
             set_label("Tag `" + tagname_ + "'");
             assert(ctagname == otagname);
+            assert(edges_.size() == 1);
         }
         ~Tag() = default;
 
@@ -360,7 +361,7 @@ class VariableDef : public Node
 class ForClause : public Node, public ContextIterator
 {
     public:
-        using VarDependencies = std::map<std::string, std::set<VariableDef*>>;
+        using VarDependencies = std::map<std::string, std::pair<VariableDef*, std::set<VariableDef*>>>;
 
         ForClause(Edges&& edges) : Node{std::move(edges)}
         {
@@ -410,7 +411,7 @@ class FLWRExpression : public Node
     private:
         Node* WriteNewExpression(const std::string& join_var,
               const ForClause::VarDependencies& deps,
-              Node* where_clause) const;
+              Node* where_clause, Node* previous_expr = nullptr) const;
         bool CorrelateDependencies(const std::string& join_var,
                      const ForClause::VarDependencies& deps,
                      const Variable::VariableList& var_list);
