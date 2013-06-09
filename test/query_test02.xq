@@ -1,8 +1,7 @@
 for $b in doc(input_join_books.xml)/book,
     $a in doc(input_join_reviews.xml)/entry,
-    $c in $a,
-    $tb in $c/title,
-    $ta in $c/title
+    $tb in $b/title,
+    $ta in $a/title
 
     where $tb eq $ta
 
