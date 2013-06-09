@@ -460,7 +460,7 @@ Node* FLWRExpression::WriteNewExpression(const std::string& join_var,
     auto tuple_tag = NEW_NODE(Tag{"tuple", "tuple", {concatenate()}});
     auto ret_clause = NEW_NODE(ReturnClause{{tuple_tag}});
 
-    return NEW_NODE(FLWRExpression{{for_clause, where_clause, nullptr, ret_clause}});
+    return NEW_NODE(FLWRExpression{{for_clause, nullptr, where_clause, ret_clause}});
 }
 
 bool FLWRExpression::CorrelateDependencies(const std::string& join_var,
@@ -468,11 +468,12 @@ bool FLWRExpression::CorrelateDependencies(const std::string& join_var,
                      const Variable::VariableList& var_list)
 {
     const auto& dep_set = deps.at(join_var).second;
+    auto join_vdef = deps.at(join_var).first;
 
     for (auto var : var_list) {
         auto it = std::find_if(std::begin(dep_set), std::end(dep_set),
           [var](const VariableDef* vdef) { return vdef->varname() == var->varname(); });
-        if (it == std::end(dep_set))
+        if (it == std::end(dep_set) && var->varname() != join_vdef->varname())
             return false;
     }
     return true;
